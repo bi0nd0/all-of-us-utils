@@ -9,29 +9,34 @@ class SurveyQueryBuilder:
     
     def get_concept_query(self, concept_ids):
         concept_ids_str = Utils.list_to_string(concept_ids, quote=False)
-        return f"""SELECT criteria.person_id 
-            FROM (
-                SELECT DISTINCT person_id, entry_date, concept_id 
-                FROM `{self.dataset}.cb_search_all_events` 
-                WHERE concept_id IN (
-                    SELECT DISTINCT c.concept_id 
-                    FROM `{self.dataset}.cb_criteria` c 
-                    JOIN (
-                        SELECT CAST(cr.id as string) AS id
-                        FROM `{self.dataset}.cb_criteria` cr
-                        WHERE concept_id IN ({concept_ids_str})
-                        AND full_text LIKE '%_rank1]%'
-                    ) a ON (
-                        c.path LIKE CONCAT('%.', a.id, '.%') 
-                        OR c.path LIKE CONCAT('%.', a.id) 
-                        OR c.path LIKE CONCAT(a.id, '.%') 
-                        OR c.path = a.id
-                    ) 
-                    WHERE is_standard = 0 
-                    AND is_selectable = 1
-                ) 
-                AND is_standard = 0
-            ) criteria"""
+        return f"""SELECT
+                    criteria.person_id 
+                FROM
+                    (SELECT
+                        DISTINCT person_id, entry_date, concept_id 
+                    FROM
+                        `{self.dataset}.cb_search_all_events` 
+                    WHERE
+                        (concept_id IN(SELECT
+                            DISTINCT c.concept_id 
+                        FROM
+                            `{self.dataset}.cb_criteria` c 
+                        JOIN
+                            (SELECT
+                                CAST(cr.id as string) AS id       
+                            FROM
+                                `{self.dataset}.cb_criteria` cr       
+                            WHERE
+                                concept_id IN ({concept_ids_str})       
+                                AND full_text LIKE '%_rank1]%'      ) a 
+                                ON (c.path LIKE CONCAT('%.', a.id, '.%') 
+                                OR c.path LIKE CONCAT('%.', a.id) 
+                                OR c.path LIKE CONCAT(a.id, '.%') 
+                                OR c.path = a.id) 
+                        WHERE
+                            is_standard = 0 
+                            AND is_selectable = 1) 
+                        AND is_standard = 0 )) criteria"""
     
     def include_concept_ids(self, concept_ids):
         concept_query = self.get_concept_query(concept_ids)
@@ -66,23 +71,25 @@ class SurveyQueryBuilder:
         def getQuery(condition):
             return f"""
                 SELECT
-                    answer.person_id,
-                    answer.survey_datetime,
-                    answer.survey,
-                    answer.question_concept_id,
-                    answer.question,
-                    answer.answer_concept_id,
-                    answer.answer,
-                    answer.survey_version_concept_id,
-                    answer.survey_version_name  
-                FROM
-                    `{self.dataset}.ds_survey` answer    
-                WHERE
-                    answer.PERSON_ID IN (
-                        SELECT DISTINCT person_id  
-                        FROM `{self.dataset}.cb_search_person` cb_search_person  
-                        WHERE {condition}
-                    )"""
+                        answer.person_id,
+                        answer.survey_datetime,
+                        answer.survey,
+                        answer.question_concept_id,
+                        answer.question,
+                        answer.answer_concept_id,
+                        answer.answer,
+                        answer.survey_version_concept_id,
+                        answer.survey_version_name  
+                    FROM
+                        `{self.dataset}.ds_survey` answer    
+                    WHERE
+                        (
+                            answer.PERSON_ID IN (SELECT
+                                distinct person_id  
+                            FROM
+                                `{self.dataset}.cb_search_person` cb_search_person  
+                            WHERE {condition}
+                        )"""
         self.selectQuery = getQuery
         return self
         
