@@ -8,14 +8,7 @@ dataset = 'your_dataset_name'  # Replace with your actual dataset name
 qb = SurveyQueryBuilder(dataset)
 
 # Build a query
-query = qb.select().include_concept_ids([1585873, 1585860]).build()
-
-# Execute the query and get the results as a DataFrame
-df = Utils.get_dataframe(query)
+query = qb.select().include_concept_ids([1585873, 1585860, 1234]).exclude_persons([1,2,3,4,5,6,7,8,9,0]).build()
 
 # Display the first 5 rows of the DataFrame
-print(person_df.head(5))
-
-# Build a list of person IDs to use in other queries
-person_id_list = df['person_id'].tolist()
-print(person_id_list)
+print(query)
