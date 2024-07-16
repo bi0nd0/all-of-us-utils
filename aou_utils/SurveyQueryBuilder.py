@@ -12,13 +12,13 @@ class SurveyQueryBuilder:
         return f"""SELECT criteria.person_id 
             FROM (
                 SELECT DISTINCT person_id, entry_date, concept_id 
-                FROM `{self.datase}.cb_search_all_events` 
+                FROM `{self.dataset}.cb_search_all_events` 
                 WHERE concept_id IN (
                     SELECT DISTINCT c.concept_id 
-                    FROM `{self.datase}.cb_criteria` c 
+                    FROM `{self.dataset}.cb_criteria` c 
                     JOIN (
                         SELECT CAST(cr.id as string) AS id
-                        FROM `{self.datase}.cb_criteria` cr
+                        FROM `{self.dataset}.cb_criteria` cr
                         WHERE concept_id IN ({concept_ids_str})
                         AND full_text LIKE '%_rank1]%'
                     ) a ON (
