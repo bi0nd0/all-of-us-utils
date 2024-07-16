@@ -10,33 +10,33 @@ class SurveyQueryBuilder:
     def get_concept_query(self, concept_ids):
         concept_ids_str = Utils.list_to_string(concept_ids, quote=False)
         return f"""SELECT
-                criteria.person_id 
-            FROM
-                (SELECT
-                    DISTINCT person_id, entry_date, concept_id 
-                FROM
-                    `{self.dataset}.cb_search_all_events` 
-                WHERE
-                    (concept_id IN(SELECT
-                        DISTINCT c.concept_id 
+                        criteria.person_id 
                     FROM
-                        `{self.dataset}.cb_criteria` c 
-                    JOIN
                         (SELECT
-                            CAST(cr.id as string) AS id       
+                            DISTINCT person_id, entry_date, concept_id 
                         FROM
-                            `{self.dataset}.cb_criteria` cr       
+                            `{self.dataset}.cb_search_all_events` 
                         WHERE
-                            concept_id IN ({concept_ids_str})       
-                            AND full_text LIKE '%_rank1]%'      ) a 
-                            ON (c.path LIKE CONCAT('%.', a.id, '.%') 
-                            OR c.path LIKE CONCAT('%.', a.id) 
-                            OR c.path LIKE CONCAT(a.id, '.%') 
-                            OR c.path = a.id) 
-                    WHERE
-                        is_standard = 0 
-                        AND is_selectable = 1) 
-                    AND is_standard = 0 )) criteria"""
+                            (concept_id IN(SELECT
+                                DISTINCT c.concept_id 
+                            FROM
+                                `{self.dataset}.cb_criteria` c 
+                            JOIN
+                                (SELECT
+                                    CAST(cr.id as string) AS id       
+                                FROM
+                                    `{self.dataset}.cb_criteria` cr       
+                                WHERE
+                                    concept_id IN ({concept_ids_str})       
+                                    AND full_text LIKE '%_rank1]%'      ) a 
+                                    ON (c.path LIKE CONCAT('%.', a.id, '.%') 
+                                    OR c.path LIKE CONCAT('%.', a.id) 
+                                    OR c.path LIKE CONCAT(a.id, '.%') 
+                                    OR c.path = a.id) 
+                            WHERE
+                                is_standard = 0 
+                                AND is_selectable = 1) 
+                            AND is_standard = 0 )) criteria"""
     
     def include_concept_ids(self, concept_ids):
         concept_query = self.get_concept_query(concept_ids)
@@ -97,7 +97,7 @@ class SurveyQueryBuilder:
                                 FROM
                                     `{self.dataset}.cb_search_all_events`
                                 WHERE {condition}
-                        )"""
+                    )"""
         self.selectQuery = getQuery
         return self
         
