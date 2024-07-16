@@ -6,10 +6,10 @@ class ConceptsTableMaker:
     def __init__(self):
         pass
     
-    def combine_concepts_counts(self, person_ids, concepts_group):
+    def combine_concepts_counts(self, dataset, person_ids, concepts_group):
         data = []
         total_persons = len(person_ids)
-        qb = QueryBuilder()
+        qb = QueryBuilder(dataset)
         qb = qb.selectDemography()
         
         for entry in concepts_group:
