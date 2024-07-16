@@ -88,7 +88,7 @@ class SurveyQueryBuilder:
                             distinct person_id  
                         FROM
                             `{self.dataset}.cb_search_person` cb_search_person  
-                        WHERE ({condition})"""
+                        WHERE {condition}"""
         self.selectQuery = getQuery
         return self
         
