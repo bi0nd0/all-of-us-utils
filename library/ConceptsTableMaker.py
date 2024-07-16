@@ -10,7 +10,8 @@ class ConceptsTableMaker:
         data = []
         total_persons = len(person_ids)
         qb = QueryBuilder()
-
+        qb = qb.selectDemography()
+        
         for entry in concepts_group:
             label = entry['label']
             concept_ids = entry['ids']

@@ -3,7 +3,8 @@ from .Utils import Utils
 class QueryBuilder:
     def __init__(self, dataset):
         self.dataset = dataset
-        self.exclusion_criteria = []
+        self.selectQuery = None
+        self.inclusion_criteria = []
         self.exclusion_criteria = []
     
     def get_concept_query(self, concept_ids):
@@ -38,13 +39,13 @@ class QueryBuilder:
                     AND is_standard = 1 )) criteria"""
     
     def include_concept_ids(self, concept_ids):
-        ids_str = self.get_concept_query(concept_ids)
+        concept_query = self.get_concept_query(concept_ids)
         query = f"""cb_search_person.person_id IN ({concept_query})"""
         self.inclusion_criteria.append(query)
         return self
     
     def exclude_concept_ids(self, concept_ids):
-        ids_str = self.get_concept_query(concept_ids)
+        concept_query = self.get_concept_query(concept_ids)
         query = f"""cb_search_person.person_id NOT IN ({concept_query})"""
         self.exclusion_criteria.append(query)
         return self
@@ -65,43 +66,51 @@ class QueryBuilder:
         self.inclusion_criteria = []
         self.exclusion_criteria = []
         return self
+    
+    def selectDemography(self):
+        def getQuery(condition):
+            return f"""
+                SELECT
+                    person.person_id,
+                    person.gender_concept_id,
+                    p_gender_concept.concept_name as gender,
+                    person.birth_datetime as date_of_birth,
+                    person.race_concept_id,
+                    p_race_concept.concept_name as race,
+                    person.ethnicity_concept_id,
+                    p_ethnicity_concept.concept_name as ethnicity,
+                    person.sex_at_birth_concept_id,
+                    p_sex_at_birth_concept.concept_name as sex_at_birth 
+                FROM
+                    `{self.dataset}.person` person 
+                LEFT JOIN
+                    `{self.dataset}.concept` p_gender_concept 
+                        ON person.gender_concept_id = p_gender_concept.concept_id 
+                LEFT JOIN
+                    `{self.dataset}.concept` p_race_concept 
+                        ON person.race_concept_id = p_race_concept.concept_id 
+                LEFT JOIN
+                    `{self.dataset}.concept` p_ethnicity_concept 
+                        ON person.ethnicity_concept_id = p_ethnicity_concept.concept_id 
+                LEFT JOIN
+                    `{self.dataset}.concept` p_sex_at_birth_concept 
+                        ON person.sex_at_birth_concept_id = p_sex_at_birth_concept.concept_id  
+                WHERE
+                    person.PERSON_ID IN (SELECT
+                        distinct person_id  
+                    FROM
+                        `{self.dataset}.cb_search_person` cb_search_person  
+                    WHERE {condition}) """
+        self.selectQuery = getQuery
+        return self
+        
 
     def build(self, reset=True):
         # Combine inclusion and exclusion criteria
         all_criteria = self.inclusion_criteria + self.exclusion_criteria
         # Join all criteria with ' AND '
         condition = ' AND '.join(all_criteria) if all_criteria else '1=1'
+        query = self.selectQuery(condition)
         if(reset == True): self.reset()
 
-        return f"""
-            SELECT
-                person.person_id,
-                person.gender_concept_id,
-                p_gender_concept.concept_name as gender,
-                person.birth_datetime as date_of_birth,
-                person.race_concept_id,
-                p_race_concept.concept_name as race,
-                person.ethnicity_concept_id,
-                p_ethnicity_concept.concept_name as ethnicity,
-                person.sex_at_birth_concept_id,
-                p_sex_at_birth_concept.concept_name as sex_at_birth 
-            FROM
-                `{self.dataset}.person` person 
-            LEFT JOIN
-                `{self.dataset}.concept` p_gender_concept 
-                    ON person.gender_concept_id = p_gender_concept.concept_id 
-            LEFT JOIN
-                `{self.dataset}.concept` p_race_concept 
-                    ON person.race_concept_id = p_race_concept.concept_id 
-            LEFT JOIN
-                `{self.dataset}.concept` p_ethnicity_concept 
-                    ON person.ethnicity_concept_id = p_ethnicity_concept.concept_id 
-            LEFT JOIN
-                `{self.dataset}.concept` p_sex_at_birth_concept 
-                    ON person.sex_at_birth_concept_id = p_sex_at_birth_concept.concept_id  
-            WHERE
-                person.PERSON_ID IN (SELECT
-                    distinct person_id  
-                FROM
-                    `{self.dataset}.cb_search_person` cb_search_person  
-                WHERE {condition}) """
+        return query
