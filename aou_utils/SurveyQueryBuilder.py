@@ -87,37 +87,17 @@ class SurveyQueryBuilder:
                         answer.PERSON_ID IN (SELECT
                             distinct person_id  
                         FROM
-                            `{self.dataset}.cb_search_person` cb_search_person  
+                            `{self.dataset}.cb_search_person` cb_search_person
                         WHERE
                             cb_search_person.person_id IN (SELECT
-                                criteria.person_id 
+                                criteria.person_id
                             FROM
                                 (SELECT
-                                    DISTINCT person_id, entry_date, concept_id 
+                                    DISTINCT person_id, entry_date, concept_id
                                 FROM
-                                    `{self.dataset}.cb_search_all_events` 
-                                WHERE
-                                    (concept_id IN(SELECT
-                                        DISTINCT c.concept_id 
-                                    FROM
-                                        `{self.dataset}.cb_criteria` c 
-                                    JOIN
-                                        (SELECT
-                                            CAST(cr.id as string) AS id       
-                                        FROM
-                                            `{self.dataset}.cb_criteria` cr       
-                                        WHERE
-                                            concept_id IN (1585873, 1585860)       
-                                            AND full_text LIKE '%_rank1]%'      ) a 
-                                            ON (c.path LIKE CONCAT('%.', a.id, '.%') 
-                                            OR c.path LIKE CONCAT('%.', a.id) 
-                                            OR c.path LIKE CONCAT(a.id, '.%') 
-                                            OR c.path = a.id) 
-                                    WHERE
-                                        is_standard = 0 
-                                        AND is_selectable = 1) 
-                                    AND is_standard = 0 )) criteria ) )
-                    )"""
+                                    `{self.dataset}.cb_search_all_events`
+                                WHERE {condition}
+                        )"""
         self.selectQuery = getQuery
         return self
         

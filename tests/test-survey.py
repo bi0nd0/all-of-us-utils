@@ -1,3 +1,11 @@
+import sys
+import os
+
+# Set the PYTHONPATH to include the library directory
+sys.path.append(os.path.abspath('../'))
+
+
+
 from aou_utils import Utils
 from aou_utils.SurveyQueryBuilder import SurveyQueryBuilder
 
