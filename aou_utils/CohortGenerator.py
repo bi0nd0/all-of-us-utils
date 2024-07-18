@@ -6,19 +6,6 @@ class CohortGenerator:
     RACE_KEY = "race_concept_id"
     AGE_KEY = "age"
     AGE_DIFF_KEY = 'age_diff'
-    
-    def calculate_age(self, date_of_birth, current_year):
-        """
-        Calculate the age based on the date of birth and the current year.
-
-        Parameters:
-        - date_of_birth (pandas Series): Series containing dates of birth.
-        - current_year (int): The current year.
-
-        Returns:
-        - pandas Series: Series containing ages.
-        """
-        return current_year - date_of_birth.dt.year
 
     def find_matches(self, case, controls, ratio):
         """Finds matching controls for a given case based on sex, race, and age within a specified caliper."""
