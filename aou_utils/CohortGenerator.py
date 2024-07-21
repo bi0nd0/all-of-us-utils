@@ -9,49 +9,15 @@ class CohortGenerator:
     AGE_DIFF_KEY = 'age_diff'
     SMOKER_KEY = "smoker_status"  # New key for smoker status
 
-    def __init__(self, 
-                 case_df: pd.DataFrame, 
-                 control_df: pd.DataFrame, 
-                 case_survey_df: pd.DataFrame, 
-                 control_survey_df: pd.DataFrame, 
-                 age_calculator: AgeCalculator):
+    def __init__(self, case_df: pd.DataFrame, control_df: pd.DataFrame):
         self.case_df = case_df.copy()
         self.control_df = control_df.copy()
-        self.age_calculator = age_calculator
-        
-        # Apply smoker status
-        self.case_df = self.apply_smoker_status(self.case_df, case_survey_df)
-        self.control_df = self.apply_smoker_status(self.control_df, control_survey_df)
-        
-        # Apply age using the provided age calculator
-        self.case_df = self.apply_age(self.case_df)
-        self.control_df = self.apply_age(self.control_df)
 
         # # Debug: Print DataFrame columns to verify smoker_status column
         # print("Case DataFrame after applying smoker status and age:")
         # print(self.case_df)
         # print("\nControl DataFrame after applying smoker status and age:")
         # print(self.control_df)
-
-    def apply_smoker_status(self, df: pd.DataFrame, survey_df: pd.DataFrame) -> pd.DataFrame:
-        """Adds a smoker/non-smoker field to the DataFrame based on the provided survey data."""
-        def map_smoker_status(answer: str) -> str:
-            if answer in ['Daily', 'Occasionally']:
-                return 'smoker'
-            else:
-                return 'non-smoker'
-
-        # Apply smoker status
-        survey_df['smoker_status'] = survey_df['answer'].apply(map_smoker_status)
-        smoker_status_df = survey_df[['person_id', 'smoker_status']]
-        df = df.merge(smoker_status_df, on='person_id', how='left')
-        return df
-
-
-    def apply_age(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Adds an age field to the DataFrame using the provided age calculator."""
-        df = self.age_calculator.calculate_age(df)
-        return df
 
 
     def find_matches(self, case_row: pd.Series, ratio: int, caliper: int) -> pd.DataFrame:
