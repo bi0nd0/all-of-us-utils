@@ -7,6 +7,8 @@ from .ConceptsTableMaker import ConceptsTableMaker
 from .SmokerStatusUtility import SmokerStatusUtility
 from .StatisticsUtils import StatisticsUtils
 from .MedicationUtils import MedicationUtils
+from .MultivariableAnalysis import MultivariableAnalysis
+from .UnivariableAnalysis import UnivariableAnalysis
 from .PValueUtils import PValueUtils
 
 __all__ = [
@@ -19,5 +21,7 @@ __all__ = [
     'SmokerStatusUtility',
     'StatisticsUtils',
     'MedicationUtils',
+    'MultivariableAnalysis',
+    'UnivariableAnalysis',
     'PValueUtils'
 ]
