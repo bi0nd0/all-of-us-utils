@@ -4,6 +4,7 @@ from .SurveyQueryBuilder import SurveyQueryBuilder
 from .AgeCalculator import AgeCalculator
 from .CohortGenerator import CohortGenerator
 from .ConceptsTableMaker import ConceptsTableMaker
+from .SmokerStatusUtility import SmokerStatusUtility
 
 __all__ = [
     'Utils',
@@ -11,5 +12,6 @@ __all__ = [
     'SurveyQueryBuilder',
     'AgeCalculator',
     'CohortGenerator',
-    'ConceptsTableMaker'
+    'ConceptsTableMaker',
+    'SmokerStatusUtility'
 ]

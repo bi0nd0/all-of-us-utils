@@ -12,41 +12,57 @@ class CohortGenerator:
     def __init__(self, case_df: pd.DataFrame, control_df: pd.DataFrame):
         self.case_df = case_df.copy()
         self.control_df = control_df.copy()
+        self.criteria = []
 
-        # # Debug: Print DataFrame columns to verify smoker_status column
-        # print("Case DataFrame after applying smoker status and age:")
-        # print(self.case_df)
-        # print("\nControl DataFrame after applying smoker status and age:")
-        # print(self.control_df)
+    def withAge(self, caliper):
+        def age_criteria(case_row, potential_matches):
+            potential_matches[self.AGE_DIFF_KEY] = np.abs(potential_matches[self.AGE_KEY] - case_row[self.AGE_KEY])
+            return potential_matches[potential_matches[self.AGE_DIFF_KEY] <= caliper]
+        self.criteria.append(age_criteria)
+        return self
 
+    def withSex(self):
+        def sex_criteria(case_row, potential_matches):
+            return potential_matches[potential_matches[self.SEX_KEY] == case_row[self.SEX_KEY]]
+        self.criteria.append(sex_criteria)
+        return self
 
-    def find_matches(self, case_row: pd.Series, ratio: int, caliper: int) -> pd.DataFrame:
-        """Finds matching controls for a given case based on sex, race, age within a specified caliper, and smoker status."""
-        # Filter potential matches by sex, race, and smoker status
-        potential_matches = self.control_df[
-            (self.control_df[self.SEX_KEY] == case_row[self.SEX_KEY]) &
-            (self.control_df[self.RACE_KEY] == case_row[self.RACE_KEY]) &
-            (self.control_df[self.SMOKER_KEY] == case_row[self.SMOKER_KEY])
-        ].copy()  # Make a copy to avoid warnings when setting with enlargement on a slice.
-        
-        # Calculate age difference and apply a caliper (e.g., 3 years)
-        potential_matches[self.AGE_DIFF_KEY] = np.abs(potential_matches[self.AGE_KEY] - case_row[self.AGE_KEY])
-        potential_matches = potential_matches[potential_matches[self.AGE_DIFF_KEY] <= caliper]
-        
-        # Sort by the smallest age difference and select up to the specified ratio of matches
-        matched_controls = potential_matches.sort_values(self.AGE_DIFF_KEY).head(ratio)
+    def withRace(self):
+        def race_criteria(case_row, potential_matches):
+            return potential_matches[potential_matches[self.RACE_KEY] == case_row[self.RACE_KEY]]
+        self.criteria.append(race_criteria)
+        return self
+
+    def withSmokerStatus(self):
+        def smoker_status_criteria(case_row, potential_matches):
+            return potential_matches[potential_matches[self.SMOKER_KEY] == case_row[self.SMOKER_KEY]]
+        self.criteria.append(smoker_status_criteria)
+        return self
+
+    def find_matches(self, case_row: pd.Series, ratio: int) -> pd.DataFrame:
+        """Finds matching controls for a given case based on dynamic criteria."""
+        potential_matches = self.control_df.copy()
+
+        for criterion in self.criteria:
+            potential_matches = criterion(case_row, potential_matches)
+
+        # Sort by the smallest age difference if age is a criterion and select up to the specified ratio of matches
+        if any(crit.__name__ == 'age_criteria' for crit in self.criteria):
+            potential_matches = potential_matches.sort_values(self.AGE_DIFF_KEY)
+
+        matched_controls = potential_matches.head(ratio).copy()  # Ensure it's a copy, not a view
 
         # Add a column for the matched case person_id
         matched_controls['matched_case_id'] = case_row['person_id']
         
         return matched_controls
 
-    def match_cases_to_controls(self, ratio: int = 4, caliper: int = 3) -> pd.DataFrame:
+    def match_cases_to_controls(self, ratio: int = 4) -> pd.DataFrame:
         """Processes each case in case_df to find matching controls in control_df."""
         matched_controls_df = pd.DataFrame()  # Local DataFrame to store matched controls
         
         for index, case_row in self.case_df.iterrows():
-            matches = self.find_matches(case_row, ratio, caliper)
+            matches = self.find_matches(case_row, ratio)
             matched_controls_df = pd.concat([matched_controls_df, matches])
 
             # Remove matched controls from control_df to avoid reusing controls
