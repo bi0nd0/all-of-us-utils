@@ -157,8 +157,8 @@ class PValueUtils:
         results.append({'Variable': 'Sex', 'P-value': sex_p_value})
 
         # Ethnicity (categorical variable)
-        ethnicity_p_value = PValueUtils.calculate_p_value_categorical(study_group_df, control_group_df, 'ethnicity')
-        results.append({'Variable': 'Ethnicity', 'P-value': ethnicity_p_value})
+        ethnicity_p_value = PValueUtils.calculate_p_value_categorical(study_group_df, control_group_df, 'race_concept_id')
+        results.append({'Variable': 'Race', 'P-value': ethnicity_p_value})
 
         # Ever Smoker (categorical variable)
         ever_smoker_p_value = PValueUtils.calculate_p_value_categorical(study_group_df, control_group_df, 'smoker_status')
