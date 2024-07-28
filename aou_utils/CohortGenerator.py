@@ -1,17 +1,17 @@
 import pandas as pd
 import numpy as np
-from .AgeCalculator import AgeCalculator
 
 class CohortGenerator:
     SEX_KEY = "sex_at_birth"
     RACE_KEY = "race_concept_id"
     AGE_KEY = "age"
     AGE_DIFF_KEY = 'age_diff'
-    SMOKER_KEY = "smoker_status"  # New key for smoker status
+    SMOKER_KEY = "smoker_status"
 
     def __init__(self, case_df: pd.DataFrame, control_df: pd.DataFrame):
-        self.case_df = case_df
-        self.control_df = control_df
+        # Sort the DataFrames by person_id to ensure consistent processing order
+        self.case_df = case_df.sort_values(by='person_id').reset_index(drop=True)
+        self.control_df = control_df.sort_values(by='person_id').reset_index(drop=True)
         self.criteria = []
 
     def withAge(self, caliper):
