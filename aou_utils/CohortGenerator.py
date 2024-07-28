@@ -10,14 +10,15 @@ class CohortGenerator:
     SMOKER_KEY = "smoker_status"  # New key for smoker status
 
     def __init__(self, case_df: pd.DataFrame, control_df: pd.DataFrame):
-        self.case_df = case_df.copy()
-        self.control_df = control_df.copy()
+        self.case_df = case_df
+        self.control_df = control_df
         self.criteria = []
 
     def withAge(self, caliper):
         def age_criteria(case_row, potential_matches):
             potential_matches[self.AGE_DIFF_KEY] = np.abs(potential_matches[self.AGE_KEY] - case_row[self.AGE_KEY])
-            return potential_matches[potential_matches[self.AGE_DIFF_KEY] <= caliper]
+            potential_matches = potential_matches[potential_matches[self.AGE_DIFF_KEY] <= caliper]
+            return potential_matches.sort_values(self.AGE_DIFF_KEY)
         self.criteria.append(age_criteria)
         return self
 
@@ -45,10 +46,6 @@ class CohortGenerator:
 
         for criterion in self.criteria:
             potential_matches = criterion(case_row, potential_matches)
-
-        # Sort by the smallest age difference if age is a criterion and select up to the specified ratio of matches
-        if any(crit.__name__ == 'age_criteria' for crit in self.criteria):
-            potential_matches = potential_matches.sort_values(self.AGE_DIFF_KEY)
 
         matched_controls = potential_matches.head(ratio).copy()  # Ensure it's a copy, not a view
 
