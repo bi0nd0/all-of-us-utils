@@ -1,4 +1,5 @@
 import pandas as pd
+from scipy.stats import chi2_contingency, fisher_exact
 
 class MedicationUtils:
     def __init__(self, medications):
@@ -118,3 +119,54 @@ class MedicationUtils:
         results_df = merged_df[['drug_concept_id', 'label', 'total', 'percentage']]
         
         return results_df
+    
+    def calculate_medication_p_values(study_df, control_df, total_study_patients, total_control_patients):
+      """
+      Calculate P-values for medication usage between study and control groups using the chi-square test or Fisher's exact test.
+
+      Parameters:
+      study_df (pd.DataFrame): DataFrame for the study group with columns 'drug_concept_id', 'total', and 'label'.
+      control_df (pd.DataFrame): DataFrame for the control group with columns 'drug_concept_id', 'total', and 'label'.
+      total_study_patients (int): Total number of patients in the study group.
+      total_control_patients (int): Total number of patients in the control group.
+
+      Returns:
+      pd.DataFrame: A DataFrame containing P-values and labels for each drug.
+      """
+      try:
+          results = []
+
+          for _, row in study_df.iterrows():
+              drug_id = row['drug_concept_id']
+              label = row['label']
+              study_count = row['total']
+              control_count = control_df.loc[control_df['drug_concept_id'] == drug_id, 'total'].values[0]
+
+              contingency_table = np.array([
+                  [study_count, total_study_patients - study_count],
+                  [control_count, total_control_patients - control_count]
+              ])
+
+              # Perform Chi-Square Test
+              chi2, p_value, dof, expected = chi2_contingency(contingency_table, correction=False)
+
+              # If expected frequencies are too low, use Fisher's Exact Test
+              if (expected < 5).any():
+                  odds_ratio, p_value = fisher_exact(contingency_table)
+                  print(f"Fisher's exact test used for {label} due to low expected frequencies.")
+              else:
+                  print(f"Chi-square test used for {label}.")
+
+              results.append({
+                  'drug_concept_id': drug_id,
+                  'label': label,
+                  'P-value': p_value
+              })
+          
+          p_values_df = pd.DataFrame(results)
+          p_values_df['P-value'] = p_values_df['P-value'].map('{:.2e}'.format)
+          return p_values_df
+      
+      except Exception as e:
+          print(f"Error calculating p-values: {str(e)}")
+          return None
