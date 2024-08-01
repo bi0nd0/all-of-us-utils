@@ -120,6 +120,7 @@ class MedicationUtils:
         
         return results_df
     
+    @staticmethod
     def calculate_medication_p_values(study_df, control_df, total_study_patients, total_control_patients):
       """
       Calculate P-values for medication usage between study and control groups using the chi-square test or Fisher's exact test.
