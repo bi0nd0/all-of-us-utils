@@ -62,6 +62,12 @@ class QueryBuilder:
         self.exclusion_criteria.append(query)
         return self
     
+    def has_ehr_data(self, has_ehr=1):
+        ehr_value = 1 if has_ehr else 0
+        query = f"cb_search_person.has_ehr_data = {ehr_value}"
+        self.inclusion_criteria.append(query)
+        return self
+    
     def reset(self):
         self.inclusion_criteria = []
         self.exclusion_criteria = []
