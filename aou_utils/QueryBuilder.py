@@ -1,4 +1,5 @@
 from .Utils import Utils
+from datetime import datetime
 
 class QueryBuilder:
     def __init__(self, dataset):
@@ -67,6 +68,19 @@ class QueryBuilder:
         query = f"cb_search_person.has_ehr_data = {ehr_value}"
         self.inclusion_criteria.append(query)
         return self
+    
+    def calc_age(self, date, birth_date_key='birth_datetime'):
+        # Converts the provided date string to a datetime object for consistency
+        date_obj = datetime.strptime(date, '%Y-%m-%d')
+        date_str = date_obj.strftime('%Y-%m-%d')
+        
+        # Modify the selectQuery to include a calculated age column
+        self.selectQuery = lambda condition: self.selectQuery(condition).replace(
+            'FROM', f""", 
+                    DATE_DIFF('{date_str}', person.{birth_date_key}, YEAR) AS age 
+                    FROM""")
+        return self
+
     
     def reset(self):
         self.inclusion_criteria = []
