@@ -1,9 +1,6 @@
 import pandas as pd
 import numpy as np
 
-import pandas as pd
-import numpy as np
-
 class CohortGenerator:
     AGE_DIFF_KEY = 'age_diff'
 
@@ -13,7 +10,7 @@ class CohortGenerator:
         self.control_df = control_df.sort_values(by='person_id').reset_index(drop=True)
         self.criteria = []
 
-    def withAge(self, caliper: float = 5, age_key: str = "age"):
+    def withAge(self, caliper: int = 5, age_key: str = "age"):
         def age_criteria(case_row, potential_matches):
             potential_matches[self.AGE_DIFF_KEY] = np.abs(potential_matches[age_key] - case_row[age_key])
             potential_matches = potential_matches[potential_matches[self.AGE_DIFF_KEY] <= caliper]
@@ -21,25 +18,19 @@ class CohortGenerator:
         self.criteria.append(age_criteria)
         return self
 
-    def withSex(self, sex_key: str = "sex_at_birth"):
+    def withSex(self):
         def sex_criteria(case_row, potential_matches):
-            return potential_matches[potential_matches[sex_key] == case_row[sex_key]]
+            return potential_matches[potential_matches[self.SEX_KEY] == case_row[self.SEX_KEY]]
         self.criteria.append(sex_criteria)
         return self
 
-    def withRace(self, race_key: str = "race_concept_id"):
+    def withRace(self, race_key: str = 'race_concept_id'):
         def race_criteria(case_row, potential_matches):
             return potential_matches[potential_matches[race_key] == case_row[race_key]]
         self.criteria.append(race_criteria)
         return self
-    
-    def withEthnicity(self, ethnicity_key: str = "ethnicity_concept_id"):
-        def ethnicity_criteria(case_row, potential_matches):
-            return potential_matches[potential_matches[ethnicity_key] == case_row[ethnicity_key]]
-        self.criteria.append(ethnicity_criteria)
-        return self
 
-    def withSmokerStatus(self, smoker_key: str = "smoker_status"):
+    def withSmokerStatus(self, smoker_key: str = 'smoker_status'):
         def smoker_status_criteria(case_row, potential_matches):
             return potential_matches[potential_matches[smoker_key] == case_row[smoker_key]]
         self.criteria.append(smoker_status_criteria)
