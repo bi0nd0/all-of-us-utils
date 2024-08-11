@@ -1,12 +1,11 @@
 import pandas as pd
 import numpy as np
 
+import pandas as pd
+import numpy as np
+
 class CohortGenerator:
-    SEX_KEY = "sex_at_birth"
-    RACE_KEY = "race_concept_id"
-    AGE_KEY = "age"
     AGE_DIFF_KEY = 'age_diff'
-    SMOKER_KEY = "smoker_status"
 
     def __init__(self, case_df: pd.DataFrame, control_df: pd.DataFrame):
         # Sort the DataFrames by person_id to ensure consistent processing order
@@ -14,29 +13,35 @@ class CohortGenerator:
         self.control_df = control_df.sort_values(by='person_id').reset_index(drop=True)
         self.criteria = []
 
-    def withAge(self, caliper):
+    def withAge(self, caliper: float = 5, age_key: str = "age"):
         def age_criteria(case_row, potential_matches):
-            potential_matches[self.AGE_DIFF_KEY] = np.abs(potential_matches[self.AGE_KEY] - case_row[self.AGE_KEY])
+            potential_matches[self.AGE_DIFF_KEY] = np.abs(potential_matches[age_key] - case_row[age_key])
             potential_matches = potential_matches[potential_matches[self.AGE_DIFF_KEY] <= caliper]
             return potential_matches.sort_values(self.AGE_DIFF_KEY)
         self.criteria.append(age_criteria)
         return self
 
-    def withSex(self):
+    def withSex(self, sex_key: str = "sex_at_birth"):
         def sex_criteria(case_row, potential_matches):
-            return potential_matches[potential_matches[self.SEX_KEY] == case_row[self.SEX_KEY]]
+            return potential_matches[potential_matches[sex_key] == case_row[sex_key]]
         self.criteria.append(sex_criteria)
         return self
 
-    def withRace(self):
+    def withRace(self, race_key: str = "race_concept_id"):
         def race_criteria(case_row, potential_matches):
-            return potential_matches[potential_matches[self.RACE_KEY] == case_row[self.RACE_KEY]]
+            return potential_matches[potential_matches[race_key] == case_row[race_key]]
         self.criteria.append(race_criteria)
         return self
+    
+    def withEthnicity(self, ethnicity_key: str = "ethnicity_concept_id"):
+        def ethnicity_criteria(case_row, potential_matches):
+            return potential_matches[potential_matches[ethnicity_key] == case_row[ethnicity_key]]
+        self.criteria.append(ethnicity_criteria)
+        return self
 
-    def withSmokerStatus(self):
+    def withSmokerStatus(self, smoker_key: str = "smoker_status"):
         def smoker_status_criteria(case_row, potential_matches):
-            return potential_matches[potential_matches[self.SMOKER_KEY] == case_row[self.SMOKER_KEY]]
+            return potential_matches[potential_matches[smoker_key] == case_row[smoker_key]]
         self.criteria.append(smoker_status_criteria)
         return self
 
