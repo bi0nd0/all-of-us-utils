@@ -74,8 +74,11 @@ class QueryBuilder:
         date_obj = datetime.strptime(date, '%Y-%m-%d')
         date_str = date_obj.strftime('%Y-%m-%d')
         
+        # Store the original selectQuery function
+        original_select_query = self.selectQuery
+        
         # Modify the selectQuery to include a calculated age column
-        self.selectQuery = lambda condition: self.selectQuery(condition).replace(
+        self.selectQuery = lambda condition: original_select_query(condition).replace(
             'FROM', f""", 
                     DATE_DIFF('{date_str}', person.{birth_date_key}, YEAR) AS age 
                     FROM""")
