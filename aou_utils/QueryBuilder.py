@@ -7,6 +7,8 @@ class QueryBuilder:
         self.selectQuery = None
         self.inclusion_criteria = []
         self.exclusion_criteria = []
+        self.additional_selections = []  # hold additional selections
+
     
     def get_concept_query(self, concept_ids):
         concept_ids_str = Utils.list_to_string(concept_ids, quote=False)
@@ -70,19 +72,17 @@ class QueryBuilder:
         return self
     
     def calc_age(self, date, birth_date_key='birth_datetime'):
-        # Converts the provided date string to a datetime object for consistency
-        date_obj = datetime.strptime(date, '%Y-%m-%d')
-        date_str = date_obj.strftime('%Y-%m-%d')
+        # Convert the date to the proper format
+        date_str = datetime.strptime(date, '%Y-%m-%d').strftime('%Y-%m-%d')
 
-        # Store the original selectQuery function
-        original_select_query = self.selectQuery
-
-        # Modify the selectQuery to include a calculated age column
-        self.selectQuery = lambda condition: original_select_query(condition).replace(
-            'FROM', f""", 
-                    DATE_DIFF(DATE('{date_str}'), DATE(person.{birth_date_key}), YEAR) AS age 
-                    FROM""")
+        # Calculate the age with adjustment for whether the birthday has passed this year
+        age_selection = f"""
+            DATE_DIFF(DATE('{date_str}'), DATE(person.{birth_date_key}), YEAR) - 
+            CAST(FORMAT_DATE('%m%d', DATE('{date_str}')) < FORMAT_DATE('%m%d', DATE(person.{birth_date_key})) AS INT64) AS age
+        """
+        self.additional_selections.append(age_selection)
         return self
+
 
     
     def reset(self):
@@ -92,18 +92,25 @@ class QueryBuilder:
     
     def selectDemography(self):
         def getQuery(condition):
+            # Combine default selections with any additional selections
+            selections = [
+                "person.person_id",
+                "person.gender_concept_id",
+                "p_gender_concept.concept_name as gender",
+                "person.birth_datetime as date_of_birth",
+                "person.race_concept_id",
+                "p_race_concept.concept_name as race",
+                "person.ethnicity_concept_id",
+                "p_ethnicity_concept.concept_name as ethnicity",
+                "person.sex_at_birth_concept_id",
+                "p_sex_at_birth_concept.concept_name as sex_at_birth"
+            ] + self.additional_selections
+            
+            # Join all selections into a single string
+            selection_str = ",\n".join(selections)
             return f"""
                 SELECT
-                    person.person_id,
-                    person.gender_concept_id,
-                    p_gender_concept.concept_name as gender,
-                    person.birth_datetime as date_of_birth,
-                    person.race_concept_id,
-                    p_race_concept.concept_name as race,
-                    person.ethnicity_concept_id,
-                    p_ethnicity_concept.concept_name as ethnicity,
-                    person.sex_at_birth_concept_id,
-                    p_sex_at_birth_concept.concept_name as sex_at_birth 
+                    {selection_str}
                 FROM
                     `{self.dataset}.person` person 
                 LEFT JOIN
@@ -123,7 +130,9 @@ class QueryBuilder:
                         distinct person_id  
                     FROM
                         `{self.dataset}.cb_search_person` cb_search_person  
-                    WHERE {condition}) """
+                    WHERE {condition})
+                    ORDER BY person_id ASC"""
+        
         self.selectQuery = getQuery
         return self
         
