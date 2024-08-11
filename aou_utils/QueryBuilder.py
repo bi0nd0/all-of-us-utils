@@ -88,6 +88,7 @@ class QueryBuilder:
     def reset(self):
         self.inclusion_criteria = []
         self.exclusion_criteria = []
+        self.additional_selections = []
         return self
     
     def selectDemography(self):
