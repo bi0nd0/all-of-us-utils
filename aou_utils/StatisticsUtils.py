@@ -65,3 +65,55 @@ class StatisticsUtils:
         smoker_status_counts.columns = ['smoker_status', 'count']
         smoker_status_counts['percentage'] = (smoker_status_counts['count'] / smoker_status_counts['count'].sum()) * 100
         return smoker_status_counts
+    
+    @staticmethod
+    def calculate_survey_statistics(df):
+        """
+        Groups the DataFrame by `answer_concept_id`, and calculates the count and percentage for each group.
+        The resulting DataFrame is ordered by `answer_concept_id` in ascending order.
+
+        Parameters:
+        df (pd.DataFrame): The DataFrame containing the columns 'answer_concept_id' and 'answer'.
+
+        Returns:
+        pd.DataFrame: A DataFrame grouped by 'answer_concept_id' with columns 'answer', 'count', and 'percentage',
+                    ordered by `answer_concept_id` in ascending order.
+        """
+        # Group by 'answer_concept_id' and count the occurrences
+        grouped_df = df.groupby(['answer_concept_id', 'answer']).size().reset_index(name='count')
+
+        # Calculate the percentage for each group
+        total_count = grouped_df['count'].sum()
+        grouped_df['percentage'] = (grouped_df['count'] / total_count) * 100
+
+        # Order by 'answer_concept_id' in ascending order
+        grouped_df = grouped_df.sort_values(by='answer_concept_id', ascending=True).reset_index(drop=True)
+
+        return grouped_df
+    
+    @staticmethod
+    def calculate_survey_p_value(study_df, control_df):
+        """
+        Calculates the p-value comparing the distributions of answers between the study group
+        and the control group using the Chi-Square test.
+
+        Parameters:
+        study_df (pd.DataFrame): DataFrame containing the survey results for the study group.
+        control_df (pd.DataFrame): DataFrame containing the survey results for the control group.
+
+        Returns:
+        float: The p-value from the Chi-Square test.
+        """
+        # Merge the two DataFrames on 'answer_concept_id' and 'answer'
+        merged_df = pd.merge(study_df[['answer_concept_id', 'answer', 'count']],
+                             control_df[['answer_concept_id', 'answer', 'count']],
+                             on=['answer_concept_id', 'answer'],
+                             suffixes=('_study', '_control'))
+
+        # Create a contingency table
+        contingency_table = merged_df[['count_study', 'count_control']].values
+
+        # Perform the Chi-Square test
+        chi2, p, dof, expected = chi2_contingency(contingency_table)
+
+        return p
