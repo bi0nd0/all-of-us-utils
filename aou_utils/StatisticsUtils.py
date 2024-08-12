@@ -92,29 +92,3 @@ class StatisticsUtils:
 
         return grouped_df
     
-    @staticmethod
-    def calculate_survey_p_value(study_df, control_df):
-        """
-        Calculates the p-value comparing the distributions of answers between the study group
-        and the control group using the Chi-Square test.
-
-        Parameters:
-        study_df (pd.DataFrame): DataFrame containing the survey results for the study group.
-        control_df (pd.DataFrame): DataFrame containing the survey results for the control group.
-
-        Returns:
-        float: The p-value from the Chi-Square test.
-        """
-        # Merge the two DataFrames on 'answer_concept_id' and 'answer'
-        merged_df = pd.merge(study_df[['answer_concept_id', 'answer', 'count']],
-                             control_df[['answer_concept_id', 'answer', 'count']],
-                             on=['answer_concept_id', 'answer'],
-                             suffixes=('_study', '_control'))
-
-        # Create a contingency table
-        contingency_table = merged_df[['count_study', 'count_control']].values
-
-        # Perform the Chi-Square test
-        chi2, p, dof, expected = chi2_contingency(contingency_table)
-
-        return p
