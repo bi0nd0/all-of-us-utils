@@ -11,6 +11,18 @@ class CohortGenerator:
         self.criteria = []
 
     def withAge(self, caliper: int = 5, age_key: str = "age"):
+        # Check if the age_key column exists in both DataFrames
+        if age_key not in self.case_df.columns or age_key not in self.control_df.columns:
+            raise KeyError(f"Column '{age_key}' does not exist in one of the DataFrames.")
+
+        # Ensure the age_key columns are numeric
+        self.case_df[age_key] = pd.to_numeric(self.case_df[age_key], errors='coerce')
+        self.control_df[age_key] = pd.to_numeric(self.control_df[age_key], errors='coerce')
+
+        # Drop any rows with NaN values in the age_key column
+        self.case_df = self.case_df.dropna(subset=[age_key])
+        self.control_df = self.control_df.dropna(subset=[age_key])
+        
         def age_criteria(case_row, potential_matches):
             potential_matches[self.AGE_DIFF_KEY] = np.abs(potential_matches[age_key] - case_row[age_key])
             potential_matches = potential_matches[potential_matches[self.AGE_DIFF_KEY] <= caliper]
@@ -18,15 +30,21 @@ class CohortGenerator:
         self.criteria.append(age_criteria)
         return self
 
-    def withSex(self):
+    def withSex(self, sex_key: str = 'sex_at_birth_concept_id'):
         def sex_criteria(case_row, potential_matches):
-            return potential_matches[potential_matches[self.SEX_KEY] == case_row[self.SEX_KEY]]
+            return potential_matches[potential_matches[sex_key] == case_row[sex_key]]
         self.criteria.append(sex_criteria)
         return self
 
     def withRace(self, race_key: str = 'race_concept_id'):
         def race_criteria(case_row, potential_matches):
             return potential_matches[potential_matches[race_key] == case_row[race_key]]
+        self.criteria.append(race_criteria)
+        return self
+    
+    def withEthnicity(self, ethnicity_key: str = 'ethnicity_concept_id'):
+        def race_criteria(case_row, potential_matches):
+            return potential_matches[potential_matches[ethnicity_key] == case_row[ethnicity_key]]
         self.criteria.append(race_criteria)
         return self
 
