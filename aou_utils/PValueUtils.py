@@ -47,6 +47,25 @@ class PValueUtils:
             print(f"Error calculating p-value: {str(e)}")
             return None
 
+
+
+    @staticmethod
+    def format_p_value(p, threshold=0.001):
+        """
+        Format a single P-value to display values like "<.001" if below the threshold.
+
+        Parameters:
+        p (float): The P-value to format.
+        threshold (float): The threshold below which P-values are formatted as "<threshold".
+
+        Returns:
+        str: The formatted P-value as a string.
+        """
+        if p < threshold:
+            return f"<{threshold}"
+        else:
+            return f"{p:.3f}"
+        
     @staticmethod
     def format_p_values(df, p_value_column='P-value', threshold=0.001):
         """
@@ -67,7 +86,7 @@ class PValueUtils:
 
         # Apply formatting
         formatted_df[p_value_column] = formatted_df[p_value_column].apply(
-            lambda p: f"<{threshold}" if p < threshold else f"{p:.3f}"
+            lambda p: SurveyStatistics.format_p_value(p, threshold)
         )
 
         return formatted_df
