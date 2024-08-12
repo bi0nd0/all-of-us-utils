@@ -68,13 +68,15 @@ class StatisticsUtils:
         return smoker_status_counts
     
     @staticmethod
-    def calculate_survey_statistics(df):
+    def calculate_survey_statistics(df, total=None):
         """
         Groups the DataFrame by `answer_concept_id`, and calculates the count and percentage for each group.
         The resulting DataFrame is ordered by `answer_concept_id` in ascending order.
 
         Parameters:
         df (pd.DataFrame): The DataFrame containing the columns 'answer_concept_id' and 'answer'.
+        total (int, optional): The total number of responses to use for calculating percentages. 
+                            If None, the sum of counts in the DataFrame is used.
 
         Returns:
         pd.DataFrame: A DataFrame grouped by 'answer_concept_id' with columns 'answer', 'count', and 'percentage',
@@ -83,9 +85,12 @@ class StatisticsUtils:
         # Group by 'answer_concept_id' and count the occurrences
         grouped_df = df.groupby(['answer_concept_id', 'answer']).size().reset_index(name='count')
 
-        # Calculate the percentage for each group
-        total_count = grouped_df['count'].sum()
-        grouped_df['percentage'] = (grouped_df['count'] / total_count) * 100
+        # Use the provided total if available; otherwise, sum the counts in the DataFrame
+        if total is None:
+            total = grouped_df['count'].sum()
+
+        # Calculate the percentage for each group using the provided or calculated total
+        grouped_df['percentage'] = (grouped_df['count'] / total) * 100
 
         # Order by 'answer_concept_id' in ascending order
         grouped_df = grouped_df.sort_values(by='answer_concept_id', ascending=True).reset_index(drop=True)
