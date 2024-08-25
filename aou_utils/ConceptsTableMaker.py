@@ -52,7 +52,7 @@ class ConceptsTableMaker:
 
         for comorbidity in comorbidities:
             # Apply the combine_concepts_counts function for each comorbidity
-            result_df = self.combine_concepts_counts(dataset, person_ids, [comorbidity])
+            result_df, df = self.combine_concepts_counts(dataset, person_ids, comorbidity)
             
             # Add a column for the comorbidity label
             result_df['comorbidity'] = comorbidity['label']
