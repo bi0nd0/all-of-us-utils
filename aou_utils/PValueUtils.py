@@ -86,7 +86,7 @@ class PValueUtils:
 
         # Apply formatting
         formatted_df[p_value_column] = formatted_df[p_value_column].apply(
-            lambda p: SurveyStatistics.format_p_value(p, threshold)
+            lambda p: PValueUtils.format_p_value(p, threshold)
         )
 
         return formatted_df
