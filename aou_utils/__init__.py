@@ -20,6 +20,7 @@ __all__ = [
     'ConceptsTableMaker',
     'SmokerStatusUtility',
     'StatisticsUtils',
+    'ConditionUtils',
     'MedicationUtils',
     'MultivariableAnalysis',
     'UnivariableAnalysis',
