@@ -1,5 +1,6 @@
 import re, pandas as pd, os
 import numpy as np
+from scipy.stats import chi2_contingency, fisher_exact
 class Utils:
     @staticmethod
     def list_to_string(items, quote=False):
@@ -89,3 +90,92 @@ class Utils:
         result_df['formatted_total_percentage'] = result_df['total'].astype(str) + ' (' + truncated_percentages.round(2).astype(str) + '%)'
         
         return result_df
+    
+    @staticmethod
+    def calculate_p_values(study_df, control_df, label_column='label', total_column='total'):
+        """
+        Calculates the P-value for the difference between study and control groups 
+        for each label using a Chi-square test or Fisher's exact test.
+
+        Parameters:
+        - study_df (pd.DataFrame): A DataFrame containing the study group data.
+        - control_df (pd.DataFrame): A DataFrame containing the control group data.
+        - label_column (str): The column name that contains the labels (e.g., 'label'). Default is 'label'.
+        - total_column (str): The column name that contains the totals (e.g., 'total'). Default is 'total'.
+
+        Returns:
+        - pd.DataFrame: A DataFrame containing the labels and their corresponding P-values.
+        """
+        p_values = []
+
+        # Ensure both DataFrames are sorted by label
+        study_df = study_df.sort_values(label_column).reset_index(drop=True)
+        control_df = control_df.sort_values(label_column).reset_index(drop=True)
+
+        for label in study_df[label_column]:
+            # Check if the label exists in both DataFrames
+            if label not in control_df[label_column].values:
+                print(f"Label '{label}' not found in control group.")
+                continue
+            
+            # Extract the totals for the study and control groups
+            study_total = study_df[study_df[label_column] == label][total_column].values[0]
+            control_total = control_df[control_df[label_column] == label][total_column].values[0]
+
+            # Create the contingency table
+            contingency_table = [[study_total, control_total], 
+                                [sum(study_df[total_column]) - study_total, sum(control_df[total_column]) - control_total]]
+
+            # Use Fisher's exact test if any cell in the table is less than 5
+            if any(cell < 5 for cell in contingency_table[0]):
+                _, p = fisher_exact(contingency_table)
+            else:
+                _, p, _, _ = chi2_contingency(contingency_table)
+
+            # Store the label and the P-value
+            p_values.append({label_column: label, 'p_value': p})
+
+        # Convert the results to a DataFrame
+        p_values_df = pd.DataFrame(p_values)
+
+        return p_values_df
+
+    @staticmethod
+    def calculate_overall_p_value(study_df, control_df, label_column='label', total_column='total'):
+        """
+        Calculates the overall P-value for the difference in distribution between 
+        the study and control groups using a Chi-square test.
+
+        Parameters:
+        - study_df (pd.DataFrame): A DataFrame containing the study group data.
+        - control_df (pd.DataFrame): A DataFrame containing the control group data.
+        - label_column (str): The column name that contains the labels (e.g., 'label'). Default is 'label'.
+        - total_column (str): The column name that contains the totals (e.g., 'total'). Default is 'total'.
+
+        Returns:
+        - float: The overall P-value for the distribution comparison.
+        """
+        # Ensure both DataFrames are sorted by label
+        study_df = study_df.sort_values(label_column).reset_index(drop=True)
+        control_df = control_df.sort_values(label_column).reset_index(drop=True)
+        
+        # Ensure that both DataFrames contain the same set of labels
+        common_labels = study_df[label_column].isin(control_df[label_column])
+        if not common_labels.all():
+            missing_labels = study_df.loc[~common_labels, label_column].values
+            print(f"Missing labels in control group: {missing_labels}")
+            study_df = study_df[common_labels]
+
+        common_labels_control = control_df[label_column].isin(study_df[label_column])
+        if not common_labels_control.all():
+            missing_labels_control = control_df.loc[~common_labels_control, label_column].values
+            print(f"Missing labels in study group: {missing_labels_control}")
+            control_df = control_df[common_labels_control]
+        
+        # Create the contingency table for the overall distribution comparison
+        contingency_table = [study_df[total_column].values, control_df[total_column].values]
+
+        # Perform Chi-square test
+        _, overall_p, _, _ = chi2_contingency(contingency_table)
+
+        return overall_p
