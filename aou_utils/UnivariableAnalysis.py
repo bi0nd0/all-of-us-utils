@@ -101,3 +101,21 @@ class UnivariableAnalysis:
         print(f"Univariable analysis for {independent_var}: OR = {odds_ratio:.2f} ({confidence_interval[0]:.2f}-{confidence_interval[1]:.2f}), p ≈ {formatted_p_value}")
 
         return results_df
+    
+    def convert_column_to_type(self, column_name, dtype):
+        """
+        Convert a specified column to a specified type.
+
+        Parameters:
+        column_name (str): The name of the column to convert.
+        dtype (str): The data type to convert the column to.
+
+        Returns:
+        MultivariableAnalysis: Returns the instance to allow method chaining.
+        """
+        try:
+            self.combined_df[column_name] = self.combined_df[column_name].astype(dtype)
+            print(f"Successfully converted column '{column_name}' to {dtype}.")
+        except Exception as e:
+            print(f"Error converting column '{column_name}' to {dtype}: {e}")
+        return self
