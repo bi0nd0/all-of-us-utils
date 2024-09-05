@@ -119,3 +119,37 @@ class UnivariableAnalysis:
         except Exception as e:
             print(f"Error converting column '{column_name}' to {dtype}: {e}")
         return self
+
+    def convert_categorical_to_dummies(self, column_name, drop_category=None):
+        """
+        Convert categorical variables to dummy variables for a specified column,
+        and drop a specified category or the first category if none is specified.
+
+        Parameters:
+        column_name (str): The name of the column to convert.
+        drop_category (str, optional): The category to drop. Defaults to None.
+
+        Returns:
+        MultivariableAnalysis: Returns the instance to allow method chaining.
+        """
+        # Generate dummy variables without dropping any category initially
+        dummies = pd.get_dummies(self.combined_df[column_name])
+        
+        if drop_category is None:
+            # Drop the first category if drop_category is not specified
+            drop_category = dummies.columns[0]
+        
+        # Check if the drop_category exists in the columns of the dummies
+        if drop_category in dummies.columns:
+            # Drop the specified category
+            dummies.drop(columns=[drop_category], inplace=True)
+        else:
+            print(f"Warning: The category '{drop_category}' does not exist in the column '{column_name}'. No category will be dropped.")
+        
+        # Convert dummy variables to integers
+        dummies = dummies.astype(int)
+        # Concatenate the dummy variables to the combined DataFrame
+        self.combined_df = pd.concat([self.combined_df, dummies], axis=1)
+        # Add the dummy variable column names to the list of independent variables
+        self.independent_vars.extend(dummies.columns)
+        return self

@@ -53,6 +53,21 @@ class CohortGenerator:
             return potential_matches[potential_matches[smoker_key] == case_row[smoker_key]]
         self.criteria.append(smoker_status_criteria)
         return self
+    
+    # New method for binary condition matching
+    def withBinaryCondition(self, condition_key: str):
+        # Ensure the condition_key exists in both DataFrames
+        if condition_key not in self.case_df.columns or condition_key not in self.control_df.columns:
+            raise KeyError(f"Column '{condition_key}' does not exist in one of the DataFrames.")
+
+        # Check that the values in the column are binary (0 or 1)
+        if not all(self.case_df[condition_key].isin([0, 1])) or not all(self.control_df[condition_key].isin([0, 1])):
+            raise ValueError(f"Column '{condition_key}' must contain only binary values (0 or 1).")
+
+        def condition_criteria(case_row, potential_matches):
+            return potential_matches[potential_matches[condition_key] == case_row[condition_key]]
+        self.criteria.append(condition_criteria)
+        return self
 
     def find_matches(self, case_row: pd.Series, ratio: int) -> pd.DataFrame:
         """Finds matching controls for a given case based on dynamic criteria."""
