@@ -21,7 +21,7 @@ class MultivariableAnalysis:
         Add a flag variable to indicate the study group status.
 
         Parameters:
-        flag_var (str): The name of the flag variable.
+        flag_var (str): The name of the flag variable to add, which will indicate whether a person belongs to the study group.
 
         Returns:
         MultivariableAnalysis: Returns the instance to allow method chaining.
@@ -30,20 +30,19 @@ class MultivariableAnalysis:
         self.independent_vars.append(flag_var)
         return self
 
-    def convert_categorical_to_dummies(self, column_name, drop_category=None):
+    def add_dummies(self, column_name, drop_category=None):
         """
-        Convert categorical variables to dummy variables for a specified column,
-        and drop a specified category or the first category if none is specified.
+        Convert a categorical variable to dummy variables for a specified column, dropping one category if specified.
 
         Parameters:
-        column_name (str): The name of the column to convert.
-        drop_category (str, optional): The category to drop. Defaults to None.
+        column_name (str): The name of the categorical column to convert to dummy variables.
+        drop_category (str, optional): The category to drop (which will serve as the reference category). If not specified, the first category will be dropped by default.
 
         Returns:
         MultivariableAnalysis: Returns the instance to allow method chaining.
         """
         # Generate dummy variables without dropping any category initially
-        dummies = pd.get_dummies(self.combined_df[column_name])
+        dummies = pd.get_dummies(self.combined_df[column_name], dtype=int)
         
         if drop_category is None:
             # Drop the first category if drop_category is not specified
@@ -64,10 +63,9 @@ class MultivariableAnalysis:
         self.independent_vars.extend(dummies.columns)
         return self
 
-
     def add_independent_var(self, variable_name):
         """
-        Add an independent variable for the analysis.
+        Add an independent variable to the model.
 
         Parameters:
         variable_name (str): The name of the independent variable to add.
@@ -80,7 +78,7 @@ class MultivariableAnalysis:
 
     def ensure_numeric(self, column):
         """
-        Ensure a column is numeric, and provide a warning if conversion is necessary.
+        Ensure that a column is numeric, and attempt to convert it if necessary.
 
         Parameters:
         column (str): The name of the column to check and convert.
@@ -96,7 +94,7 @@ class MultivariableAnalysis:
 
     def fit_model(self, dependent_var):
         """
-        Fit the logistic regression model.
+        Fit a logistic regression model using the specified dependent variable.
 
         Parameters:
         dependent_var (str): The name of the dependent variable.
@@ -129,11 +127,11 @@ class MultivariableAnalysis:
 
     def convert_column_to_type(self, column_name, dtype):
         """
-        Convert a specified column to a specified type.
+        Convert a column to a specified data type.
 
         Parameters:
         column_name (str): The name of the column to convert.
-        dtype (str): The data type to convert the column to.
+        dtype (str): The target data type.
 
         Returns:
         MultivariableAnalysis: Returns the instance to allow method chaining.
@@ -148,13 +146,13 @@ class MultivariableAnalysis:
     @staticmethod
     def format_p_value(p_value):
         """
-        Format the p-value for display.
+        Format the p-value for display purposes.
 
         Parameters:
         p_value (float): The p-value to format.
 
         Returns:
-        str: The formatted p-value.
+        str: The formatted p-value as a string.
         """
         if p_value < 0.001:
             return "<0.001"
@@ -163,7 +161,7 @@ class MultivariableAnalysis:
     
     def get_results(self):
         """
-        Get the results of the logistic regression analysis.
+        Retrieve and display the results of the logistic regression analysis.
 
         Returns:
         pd.DataFrame: A DataFrame containing the odds ratios, confidence intervals, and formatted results.
