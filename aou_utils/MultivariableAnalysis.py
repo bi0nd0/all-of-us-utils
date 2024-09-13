@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 import re
+import warnings
 
 class MultivariableAnalysis:
     def __init__(self, study_group_df, control_group_df):
@@ -127,12 +128,110 @@ class MultivariableAnalysis:
             if self.combined_df[column].isna().any():
                 print(f"Warning: Conversion of column '{column}' resulted in NaNs. These rows will be dropped.")
 
-    def fit_model(self, dependent_var):
+    def check_perfect_separation(self, dependent_var):
         """
-        Fit a logistic regression model using the specified dependent variable.
+        Check for perfect separation between independent variables and the dependent variable.
 
         Parameters:
         dependent_var (str): The name of the dependent variable.
+
+        Returns:
+        None
+        """
+        for var in self.independent_vars:
+            if var in self.combined_df.columns:
+                crosstab = pd.crosstab(self.combined_df[var], self.combined_df[dependent_var])
+                print(f"\nCrosstab of {var} and {dependent_var}:")
+                print(crosstab)
+                # Check for categories where the outcome is always the same
+                if (crosstab[0] == 0).any() or (crosstab[1] == 0).any():
+                    print(f"Warning: Variable '{var}' may cause perfect separation.")
+
+    def check_multicollinearity(self):
+        """
+        Calculate VIF for each independent variable to detect multicollinearity.
+        Handles cases where division by zero occurs due to perfect multicollinearity by suppressing RuntimeWarnings.
+
+        Returns:
+        pd.DataFrame: A DataFrame containing VIF values.
+        """
+        from statsmodels.stats.outliers_influence import variance_inflation_factor
+        import warnings
+
+        X = self.combined_df[self.independent_vars]
+        X = sm.add_constant(X)
+        vif_data = pd.DataFrame()
+        vif_data["Variable"] = X.columns
+
+        # Initialize an empty list to store VIF values
+        vif_values = []
+
+        # Calculate VIF for each variable
+        for i in range(X.shape[1]):
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=RuntimeWarning)
+                try:
+                    vif = variance_inflation_factor(X.values, i)
+                    vif_values.append(vif)
+                except (np.linalg.LinAlgError, ZeroDivisionError):
+                    # Handle cases where division by zero occurs
+                    vif_values.append(np.inf)
+
+        vif_data["VIF"] = vif_values
+
+        print("\nVariance Inflation Factor (VIF):")
+        print(vif_data)
+        return vif_data
+
+
+
+    def check_data_quality(self, dependent_var):
+        """
+        Check data types, missing values, and variables with zero variance.
+
+        Parameters:
+        dependent_var (str): The name of the dependent variable.
+
+        Returns:
+        None
+        """
+        print("\nData Types:")
+        print(self.combined_df[self.independent_vars + [dependent_var]].dtypes)
+
+        print("\nMissing Values:")
+        print(self.combined_df[self.independent_vars + [dependent_var]].isnull().sum())
+
+        print("\nVariables with Zero Variance:")
+        for var in self.independent_vars:
+            if self.combined_df[var].nunique() <= 1:
+                print(f"Variable '{var}' has zero variance.")
+
+    def plot_correlation_matrix(self):
+        """
+        Plot a heatmap of the correlation matrix of independent variables.
+
+        Returns:
+        None
+        """
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+
+        X = self.combined_df[self.independent_vars]
+        corr_matrix = X.corr()
+
+        plt.figure(figsize=(12, 10))
+        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm')
+        plt.title("Correlation Matrix of Independent Variables")
+        plt.show()
+
+    def fit_model_with_regularization(self, dependent_var, method='l1', alpha=0.1):
+        """
+        Fit a logistic regression model using regularization.
+
+        Parameters:
+        dependent_var (str): The name of the dependent variable.
+        method (str): Regularization method ('l1' or 'l2').
+        alpha (float): Regularization strength.
 
         Returns:
         MultivariableAnalysis: Returns the instance to allow method chaining.
@@ -141,24 +240,52 @@ class MultivariableAnalysis:
         for var in self.independent_vars + [dependent_var]:
             self.ensure_numeric(var)
 
-        # Drop rows with NaN values that might have resulted from the coercion
+        # Drop rows with NaN values
         self.combined_df.dropna(subset=self.independent_vars + [dependent_var], inplace=True)
-
-        # Verify data types
-        for var in self.independent_vars + [dependent_var]:
-            print(f"Data type of '{var}': {self.combined_df[var].dtype}")
 
         # Define the independent variables (X) and dependent variable (y)
         X = sm.add_constant(self.combined_df[self.independent_vars])
         y = self.combined_df[dependent_var]
 
-        # Check shapes of X and y
-        print(f"Shape of X: {X.shape}")
-        print(f"Shape of y: {y.shape}")
+        # Fit the logistic regression model with regularization
+        try:
+            self.model = sm.Logit(y, X).fit_regularized(method=method, alpha=alpha)
+        except Exception as e:
+            print(f"Error fitting model with regularization: {e}")
+        return self
+
+    def fit_model(self, dependent_var, robust=False):
+        """
+        Fit a logistic regression model using the specified dependent variable.
+
+        Parameters:
+        dependent_var (str): The name of the dependent variable.
+        robust (bool): Whether to use robust standard errors.
+
+        Returns:
+        MultivariableAnalysis: Returns the instance to allow method chaining.
+        """
+        # Ensure all relevant columns are numeric
+        for var in self.independent_vars + [dependent_var]:
+            self.ensure_numeric(var)
+
+        # Drop rows with NaN values
+        self.combined_df.dropna(subset=self.independent_vars + [dependent_var], inplace=True)
+
+        # Define the independent variables (X) and dependent variable (y)
+        X = sm.add_constant(self.combined_df[self.independent_vars])
+        y = self.combined_df[dependent_var]
 
         # Fit the logistic regression model
-        self.model = sm.Logit(y, X).fit()
+        try:
+            if robust:
+                self.model = sm.Logit(y, X).fit(cov_type='HC3')
+            else:
+                self.model = sm.Logit(y, X).fit()
+        except Exception as e:
+            print(f"Error fitting model: {e}")
         return self
+
 
     def convert_column_to_type(self, column_name, dtype):
         """
@@ -227,3 +354,63 @@ class MultivariableAnalysis:
         print(results_df)
 
         return results_df
+    
+    def automate_analysis(self, dependent_var, vif_threshold=5.0, regularization_method='l1', alpha=0.1):
+        """
+        Automate the analysis by performing diagnostics, adjusting variables, and fitting the model.
+
+        Parameters:
+        dependent_var (str): The name of the dependent variable.
+        vif_threshold (float): Threshold for VIF to detect multicollinearity. Variables with VIF above this value will be removed.
+        regularization_method (str): Regularization method to use if needed ('l1' for Lasso, 'l2' for Ridge).
+        alpha (float): Regularization strength.
+
+        Returns:
+        MultivariableAnalysis: Returns the instance to allow method chaining.
+        """
+        # Step 1: Check data quality
+        print("Checking data quality...")
+        self.check_data_quality(dependent_var)
+
+        # Step 2: Check for perfect separation and remove problematic variables
+        print("\nChecking for perfect separation...")
+        vars_to_remove = []
+        for var in self.independent_vars:
+            if var in self.combined_df.columns:
+                crosstab = pd.crosstab(self.combined_df[var], self.combined_df[dependent_var])
+                # Check if any category perfectly predicts the outcome
+                zero_in_column = (crosstab == 0).any(axis=1)
+                if zero_in_column.any():
+                    print(f"Variable '{var}' may cause perfect separation and will be removed.")
+                    vars_to_remove.append(var)
+        # Remove variables causing perfect separation
+        for var in vars_to_remove:
+            self.independent_vars.remove(var)
+
+        # Step 3: Check for multicollinearity and remove variables with high VIF
+        print("\nChecking for multicollinearity...")
+        while True:
+            vif_data = self.check_multicollinearity()
+            vif_data = vif_data[vif_data['Variable'] != 'const']  # Exclude constant term
+            max_vif = vif_data['VIF'].max()
+            if max_vif > vif_threshold:
+                # Remove the variable with the highest VIF
+                max_vif_var = vif_data.loc[vif_data['VIF'] == max_vif, 'Variable'].values[0]
+                print(f"Variable '{max_vif_var}' has VIF={max_vif:.2f} and will be removed.")
+                self.independent_vars.remove(max_vif_var)
+            else:
+                print("No multicollinearity issues detected.")
+                break
+
+        # Step 4: Fit the model
+        print("\nFitting the model...")
+        try:
+            self.fit_model(dependent_var)
+        except Exception as e:
+            print(f"Error fitting model: {e}")
+            print("Attempting to fit model with regularization.")
+            self.fit_model_with_regularization(dependent_var, method=regularization_method, alpha=alpha)
+
+        # Return self to allow method chaining
+        return self
+
