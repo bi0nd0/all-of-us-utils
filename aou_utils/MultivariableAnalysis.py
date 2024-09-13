@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
+import re
 
 class MultivariableAnalysis:
     def __init__(self, study_group_df, control_group_df):
@@ -30,37 +31,66 @@ class MultivariableAnalysis:
         self.independent_vars.append(flag_var)
         return self
 
+    @staticmethod
+    def _clean_column_name(column_name):
+        """
+        Clean column names by:
+        - Lowercasing
+        - Replacing spaces with underscores
+        - Removing non-alphanumeric characters
+        
+        Parameters:
+        column_name (str): The column name to clean.
+        
+        Returns:
+        str: The cleaned column name.
+        """
+        # Lowercase, replace spaces, and remove non-alphanumeric characters in one step
+        return re.sub(r'\W+', '', column_name.lower().replace(' ', '_'))
+
     def add_dummies(self, column_name, drop_category=None):
         """
-        Convert a categorical variable to dummy variables for a specified column, dropping one category if specified.
+        Convert a categorical variable into dummy variables for a specified column,
+        and drop a specified category or the first category if none is specified.
 
+        The function will:
+        - Create dummy variables for each category of the specified column.
+        - Optionally drop one category (specified or the first one by default) to avoid the dummy variable trap.
+        - Transform column names to be lowercase, replace spaces with underscores, and remove non-alphanumeric characters.
+        
         Parameters:
-        column_name (str): The name of the categorical column to convert to dummy variables.
-        drop_category (str, optional): The category to drop (which will serve as the reference category). If not specified, the first category will be dropped by default.
+        column_name (str): The name of the categorical column to convert into dummy variables.
+        drop_category (str, optional): The category to drop, which will serve as the reference group. If not specified, the first category will be dropped.
 
         Returns:
-        MultivariableAnalysis: Returns the instance to allow method chaining.
+        MultivariableAnalysis1: Returns the instance to allow method chaining.
+
+        Raises:
+        Warning: If the specified `drop_category` does not exist in the dummy columns.
         """
-        # Generate dummy variables without dropping any category initially
-        dummies = pd.get_dummies(self.combined_df[column_name], dtype=int)
-        
+        # Generate dummy variables and apply name cleaning
+        dummies = pd.get_dummies(self.combined_df[column_name], prefix=self._clean_column_name(column_name), dtype=int)
+
         if drop_category is None:
-            # Drop the first category if drop_category is not specified
-            drop_category = dummies.columns[0]
-        
-        # Check if the drop_category exists in the columns of the dummies
-        if drop_category in dummies.columns:
-            # Drop the specified category
-            dummies.drop(columns=[drop_category], inplace=True)
+            # Use pandas built-in method to drop the first category if drop_category is not specified
+            dummies = pd.get_dummies(self.combined_df[column_name], prefix=self._clean_column_name(column_name), drop_first=True, dtype=int)
         else:
-            print(f"Warning: The category '{drop_category}' does not exist in the column '{column_name}'. No category will be dropped.")
-        
-        # Convert dummy variables to integers
-        dummies = dummies.astype(int)
+            # Apply the same transformation to drop_category to match the modified column names
+            drop_category_cleaned = self._clean_column_name(f"{column_name}_{drop_category}")
+            
+            # Check if the drop_category exists in the columns of the dummies
+            if drop_category_cleaned in dummies.columns:
+                # Drop the specified category
+                dummies.drop(columns=[drop_category_cleaned], inplace=True)
+            else:
+                print(f"Warning: The category '{drop_category}' does not exist in the column '{column_name}'. No category will be dropped.")
+
         # Concatenate the dummy variables to the combined DataFrame
         self.combined_df = pd.concat([self.combined_df, dummies], axis=1)
+
         # Add the dummy variable column names to the list of independent variables
         self.independent_vars.extend(dummies.columns)
+
         return self
 
     def add_independent_var(self, variable_name):
