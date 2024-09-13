@@ -69,11 +69,12 @@ class MultivariableAnalysis:
         Warning: If the specified `drop_category` does not exist in the dummy columns.
         """
         # Generate dummy variables and apply name cleaning
-        dummies = pd.get_dummies(self.combined_df[column_name], prefix=self._clean_column_name(column_name), dtype=int)
+        dummies = pd.get_dummies(self.combined_df[column_name], prefix=self._clean_column_name(column_name), drop_first=False, dtype=int)
 
+        # If no drop_category is specified, drop the first column automatically
         if drop_category is None:
-            # Use pandas built-in method to drop the first category if drop_category is not specified
-            dummies = pd.get_dummies(self.combined_df[column_name], prefix=self._clean_column_name(column_name), drop_first=True, dtype=int)
+            dummies = dummies.iloc[:, 1:]  # Drop the first category (first column)
+
         else:
             # Apply the same transformation to drop_category to match the modified column names
             drop_category_cleaned = self._clean_column_name(f"{column_name}_{drop_category}")
