@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 import re
-class UnivariableAnalysis1:
+
+class UnivariableAnalysis:
     def __init__(self, study_group_df, control_group_df):
         """
         Initialize the UnivariableAnalysis class.
