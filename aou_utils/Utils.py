@@ -181,7 +181,7 @@ class Utils:
         return overall_p
 
     @staticmethod
-    def add_concept_columns(dataframe, concepts_df, concepts):
+    def add_concept_columns(dataframe, concepts_df, concepts, person_id_col='person_id', concept_id_col='concept_id'):
         """
         Updates the dataframe by adding columns for each concept in the concepts list.
         The added columns will have a value of 1 if the person_id and concept_id match between
@@ -194,6 +194,8 @@ class Utils:
         concepts (list): A list of dictionaries where each dictionary represents a concept and contains:
                         'label' (str): The column name to be added,
                         'id' (int): The concept_id to match.
+        person_id_col (str): The column name for the person ID in both dataframes. Defaults to 'person_id'.
+        concept_id_col (str): The column name for the concept ID in concepts_df. Defaults to 'concept_id'.
 
         Returns:
         pd.DataFrame: A copy of the updated dataframe with new columns for each concept.
@@ -211,12 +213,16 @@ class Utils:
 
         # Update updated_df by checking for matches in concepts_df
         for _, row in concepts_df.iterrows():
-            person_id = row['person_id']
-            concept_id = row['concept_id']
+            person_id = row[person_id_col]
+            concept_id = row[concept_id_col]
 
             # If the concept_id exists in our concept mapping, update the corresponding label column
             if concept_id in concept_mapping:
                 label = concept_mapping[concept_id]
-                updated_df.loc[updated_df['person_id'] == person_id, label] = 1
+                updated_df.loc[updated_df[person_id_col] == person_id, label] = 1
+
+        # Ensure that all new concept columns are explicitly cast as integers
+        for concept in concepts:
+            updated_df[concept['label']] = updated_df[concept['label']].astype(int)
 
         return updated_df
