@@ -167,3 +167,25 @@ class UnivariableAnalysis:
         self.independent_vars.extend(dummies.columns)
 
         return self
+    
+    def run_all_analyses(self, dependent_var):
+        """
+        Run univariable logistic regression for all independent variables against a specified dependent variable.
+
+        Parameters:
+        dependent_var (str): The name of the dependent variable.
+
+        Returns:
+        pd.DataFrame: A DataFrame with the combined results of all univariable analyses.
+        """
+        all_results = pd.DataFrame()  # Initialize an empty DataFrame to store all results
+        
+        # Loop through all independent variables and run the analysis
+        for independent_var in self.independent_vars:
+            print(f"Running analysis for {independent_var} against {dependent_var}")
+            result = self.run_analysis(dependent_var, independent_var)
+            
+            # Append the result of the current analysis to the all_results DataFrame
+            all_results = pd.concat([all_results, result], ignore_index=True)
+        
+        return all_results
