@@ -158,8 +158,7 @@ class UnivariableAnalysis:
         UnivariableAnalysis: Returns the instance to allow method chaining.
         """
         # Generate dummy variables and apply name cleaning
-        dummies = pd.get_dummies(self.combined_df[column_name], prefix=self._clean_column_name(column_name), dtype=int)
-
+        dummies = pd.get_dummies(self.combined_df[column_name], prefix=self._clean_column_name(column_name), drop_first=False, dtype=int)
 
         # Concatenate the dummy variables to the combined DataFrame
         self.combined_df = pd.concat([self.combined_df, dummies], axis=1)
