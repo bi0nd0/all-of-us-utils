@@ -17,7 +17,7 @@ class UnivariableAnalysis:
         self.study_group_df = study_group_df.copy()
         self.independent_vars = []
 
-    def add_flag(self, flag_var, add_indipendent=True):
+    def add_flag(self, flag_var):
         """
         Add a flag variable to indicate the study group status.
 

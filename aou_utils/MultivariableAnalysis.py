@@ -69,22 +69,26 @@ class MultivariableAnalysis:
         Warning: If the specified `drop_category` does not exist in the dummy columns.
         """
         # Generate dummy variables and apply name cleaning
-        dummies = pd.get_dummies(self.combined_df[column_name], prefix=self._clean_column_name(column_name), drop_first=False, dtype=int)
-
+        dummies = pd.get_dummies(self.combined_df[column_name], prefix=column_name, drop_first=False, dtype=int)
+              
+        # Ensure both the dummy variable column names and the drop category are treated consistently (lowercased)
+        dummies.columns = [self._clean_column_name(col) for col in dummies.columns]
+        
+        print(dummies.columns)
+        
         # If no drop_category is specified, drop the first column automatically
-        if drop_category is None:
-            dummies = dummies.iloc[:, 1:]  # Drop the first category (first column)
-
-        else:
-            # Apply the same transformation to drop_category to match the modified column names
+        if drop_category is not None:
+            # Clean the drop_category to match the dummy column names
             drop_category_cleaned = self._clean_column_name(f"{column_name}_{drop_category}")
-            
-            # Check if the drop_category exists in the columns of the dummies
+            print(drop_category_cleaned)
+            # Check if the cleaned category exists in the dummy columns and drop it if present
             if drop_category_cleaned in dummies.columns:
-                # Drop the specified category
                 dummies.drop(columns=[drop_category_cleaned], inplace=True)
             else:
                 print(f"Warning: The category '{drop_category}' does not exist in the column '{column_name}'. No category will be dropped.")
+        else:
+            # If no drop_category is specified, drop the first column automatically
+            dummies = dummies.iloc[:, 1:]
 
         # Concatenate the dummy variables to the combined DataFrame
         self.combined_df = pd.concat([self.combined_df, dummies], axis=1)

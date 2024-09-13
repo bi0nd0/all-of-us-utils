@@ -179,3 +179,44 @@ class Utils:
         _, overall_p, _, _ = chi2_contingency(contingency_table)
 
         return overall_p
+
+    @staticmethod
+    def add_concept_columns(dataframe, concepts_df, concepts):
+        """
+        Updates the dataframe by adding columns for each concept in the concepts list.
+        The added columns will have a value of 1 if the person_id and concept_id match between
+        concepts_df and the dataframe, otherwise 0. The original dataframe will remain unaltered,
+        and a copy will be modified.
+
+        Parameters:
+        dataframe (pd.DataFrame): The DataFrame containing the main data with person_id.
+        concepts_df (pd.DataFrame): The DataFrame containing the concept data with person_id and concept_id.
+        concepts (list): A list of dictionaries where each dictionary represents a concept and contains:
+                        'label' (str): The column name to be added,
+                        'id' (int): The concept_id to match.
+
+        Returns:
+        pd.DataFrame: A copy of the updated dataframe with new columns for each concept.
+        """
+        
+        # Make a copy of the dataframe to avoid altering the original DataFrame
+        updated_df = dataframe.copy()
+
+        # Create a dictionary to map concept_id to concept labels
+        concept_mapping = {concept['id']: concept['label'] for concept in concepts}
+
+        # Add the concept columns to updated_df with default value 0
+        for concept in concepts:
+            updated_df[concept['label']] = 0
+
+        # Update updated_df by checking for matches in concepts_df
+        for _, row in concepts_df.iterrows():
+            person_id = row['person_id']
+            concept_id = row['concept_id']
+
+            # If the concept_id exists in our concept mapping, update the corresponding label column
+            if concept_id in concept_mapping:
+                label = concept_mapping[concept_id]
+                updated_df.loc[updated_df['person_id'] == person_id, label] = 1
+
+        return updated_df
