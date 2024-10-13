@@ -42,6 +42,19 @@ class CohortGenerator:
         self.criteria.append(race_criteria)
         return self
     
+    def withFlag(self, flag: str):
+        def flag_criteria(case_row, potential_matches):
+            if flag not in case_row:
+                print(f"Warning: Flag '{flag}' not found in case_row.")
+                return True  # Return unfiltered potential_matches if key is missing
+            if flag not in potential_matches:
+                print(f"Warning: Flag '{flag}' not found in potential_matches.")
+                return True  # Return unfiltered potential_matches if key is missing
+            return potential_matches[potential_matches[flag] == case_row[flag]]
+        self.criteria.append(flag_criteria)
+        return self
+
+    
     def withEthnicity(self, ethnicity_key: str = 'ethnicity_concept_id'):
         def race_criteria(case_row, potential_matches):
             return potential_matches[potential_matches[ethnicity_key] == case_row[ethnicity_key]]
