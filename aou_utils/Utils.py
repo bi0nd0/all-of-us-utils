@@ -243,3 +243,28 @@ class Utils:
         group_df_copy = group_df.copy()
         group_df_copy[flag_name] = np.where(group_df_copy['person_id'].isin(condition_df['person_id']), 1, 0)
         return group_df_copy
+    
+    @staticmethod
+    def get_totals_with_labels(df, key_label_map):
+        """
+        Function to compute totals for specified columns in a DataFrame and return a new DataFrame with labels.
+
+        Parameters:
+        df (pd.DataFrame): The input DataFrame.
+        key_label_map (dict): A dictionary where keys are column headers and values are their corresponding labels.
+
+        Returns:
+        pd.DataFrame: A DataFrame with columns 'Label' and 'Total'.
+        """
+        df[list(key_label_map.keys())] = df[list(key_label_map.keys())].astype(int)
+
+        # Compute the total for each specified column
+        totals = df[list(key_label_map.keys())].sum().values
+
+        # Create a new DataFrame with labels and totals
+        result = pd.DataFrame({
+            'Label': list(key_label_map.values()),
+            'Total': totals
+        })
+
+        return result
