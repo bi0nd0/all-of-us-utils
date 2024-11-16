@@ -226,3 +226,20 @@ class Utils:
             updated_df[concept['label']] = updated_df[concept['label']].astype(int)
 
         return updated_df
+    
+    @staticmethod
+    def add_flag_based_on_condition(group_df, condition_df, flag_name):
+        """
+        Adds a flag to the given group DataFrame based on the presence of person_id in the condition DataFrame.
+
+        Parameters:
+        group_df (pd.DataFrame): The DataFrame representing the group (e.g., study or control).
+        condition_df (pd.DataFrame): The DataFrame containing person_ids that meet the condition.
+        flag_name (str): The name of the flag column to be added to the group DataFrame.
+
+        Returns:
+        pd.DataFrame: The group DataFrame with the added flag column.
+        """
+        group_df_copy = group_df.copy()
+        group_df_copy[flag_name] = np.where(group_df_copy['person_id'].isin(condition_df['person_id']), 1, 0)
+        return group_df_copy
