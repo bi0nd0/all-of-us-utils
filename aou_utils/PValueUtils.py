@@ -49,7 +49,61 @@ class PValueUtils:
             result = pd.DataFrame([{'Variable': variable_name, 'P-value': 'N/A'}])
             return result
 
+    @staticmethod
+    def calculate_p_values_for_dataframe(study_totals_df, control_totals_df, study_total_participants, control_total_participants):
+        """
+        Calculate P-values for all variables in the provided study and control DataFrames.
 
+        Parameters:
+        study_totals_df (pd.DataFrame): DataFrame containing study group totals with 'Label' and 'Total'.
+        control_totals_df (pd.DataFrame): DataFrame containing control group totals with 'Label' and 'Total'.
+        study_total_participants (int): Total number of participants in the study group.
+        control_total_participants (int): Total number of participants in the control group.
+
+        Returns:
+        pd.DataFrame: A DataFrame containing all variables and their P-values.
+        """
+        # Initialize an empty list to store result DataFrames
+        p_value_dfs = []
+
+        # Loop through the DataFrames
+        for index, row in study_totals_df.iterrows():
+            # Extract label and total cases from the study group
+            label = row['Label']
+            study_total_cases = row['Total']
+
+            # Match the corresponding control total cases using the same label
+            control_total_cases = control_totals_df.loc[
+                control_totals_df['Label'] == label, 'Total'
+            ].values[0]
+
+            # Calculate p-value
+            p_value_result = PValueUtils.calculate_p_value_from_totals(
+                label,
+                study_total_cases,
+                control_total_cases,
+                study_total_participants,
+                control_total_participants
+            )
+
+            # Format the P-value if possible
+            try:
+                if p_value_result is not None and not p_value_result.empty:
+                    raw_p_value = p_value_result['P-value'].iloc[0]
+                    if raw_p_value != "N/A":
+                        formatted_p_value = PValueUtils.format_p_value(float(raw_p_value))
+                        p_value_result['P-value'] = formatted_p_value
+            except Exception as e:
+                print(f"Error formatting p-value for {label}: {str(e)}")
+                # Leave the p-value as it is in case of an exception
+
+            # Append the result DataFrame to the list
+            p_value_dfs.append(p_value_result)
+
+        # Concatenate all the result DataFrames into a single DataFrame
+        final_p_value_df = pd.concat(p_value_dfs, ignore_index=True)
+
+        return final_p_value_df
 
     @staticmethod
     def format_p_value(p, threshold=0.001):
