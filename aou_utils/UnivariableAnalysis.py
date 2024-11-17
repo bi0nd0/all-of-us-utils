@@ -16,6 +16,7 @@ class UnivariableAnalysis:
         self.combined_df = pd.concat([study_group_df.copy(), control_group_df.copy()])
         self.study_group_df = study_group_df.copy()
         self.independent_vars = []
+        self.debug = False
 
     def add_flag(self, flag_var):
         """
@@ -61,9 +62,10 @@ class UnivariableAnalysis:
         pd.DataFrame: A DataFrame with the analysis results.
         """
         # Debugging: Print the first few rows of the DataFrame to ensure columns are present
-        print("Combined DataFrame head:\n", self.combined_df.head())
-        print(f"Checking if '{independent_var}' is in combined_df columns: {independent_var in self.combined_df.columns}")
-        print(f"Checking if '{dependent_var}' is in combined_df columns: {dependent_var in self.combined_df.columns}")
+        if self.debug:
+            print("Combined DataFrame head:\n", self.combined_df.head())
+            print(f"Checking if '{independent_var}' is in combined_df columns: {independent_var in self.combined_df.columns}")
+            print(f"Checking if '{dependent_var}' is in combined_df columns: {dependent_var in self.combined_df.columns}")
 
         if independent_var not in self.combined_df.columns or dependent_var not in self.combined_df.columns:
             raise ValueError(f"One or both of the specified columns '{dependent_var}' or '{independent_var}' are not present in the DataFrame.")
@@ -118,7 +120,8 @@ class UnivariableAnalysis:
         """
         try:
             self.combined_df[column_name] = self.combined_df[column_name].astype(dtype)
-            print(f"Successfully converted column '{column_name}' to {dtype}.")
+            if self.debug:
+                print(f"Successfully converted column '{column_name}' to {dtype}.")
         except Exception as e:
             print(f"Error converting column '{column_name}' to {dtype}: {e}")
         return self
@@ -168,6 +171,10 @@ class UnivariableAnalysis:
 
         return self
     
+    def setDebug(self, flag: bool=True):
+        self.debug = flag
+        return self
+    
     def run_all_analyses(self, dependent_var):
         """
         Run univariable logistic regression for all independent variables against a specified dependent variable.
@@ -182,7 +189,8 @@ class UnivariableAnalysis:
         
         # Loop through all independent variables and run the analysis
         for independent_var in self.independent_vars:
-            print(f"Running analysis for {independent_var} against {dependent_var}")
+            if self.debug:
+                print(f"Running analysis for {independent_var} against {dependent_var}")
             result = self.run_analysis(dependent_var, independent_var)
             
             # Append the result of the current analysis to the all_results DataFrame
