@@ -253,7 +253,7 @@ class MultivariableAnalysis:
 
         # Fit the logistic regression model with regularization
         try:
-            self.model = sm.Logit(y, X).fit_regularized(method=method, alpha=alpha)
+            self.model = sm.Logit(y, X).fit_regularized(method=method, alpha=alpha, maxiter=1000)
         except Exception as e:
             print(f"Error fitting model with regularization: {e}")
         return self
@@ -283,9 +283,9 @@ class MultivariableAnalysis:
         # Fit the logistic regression model
         try:
             if robust:
-                self.model = sm.Logit(y, X).fit(cov_type='HC3')
+                self.model = sm.Logit(y, X).fit(cov_type='HC3', maxiter=1000)
             else:
-                self.model = sm.Logit(y, X).fit()
+                self.model = sm.Logit(y, X).fit(maxiter=1000)
         except Exception as e:
             print(f"Error fitting model: {e}")
         return self
