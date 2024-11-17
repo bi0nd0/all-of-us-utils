@@ -44,8 +44,10 @@ class PValueUtils:
             return result
 
         except Exception as e:
-            print(f"Error calculating p-value: {str(e)}")
-            return None
+            # Handle exceptions and return a valid structure with "N/A" for P-value
+            print(f"Error calculating p-value for {variable_name}: {str(e)}")
+            result = pd.DataFrame([{'Variable': variable_name, 'P-value': 'N/A'}])
+            return result
 
 
 
