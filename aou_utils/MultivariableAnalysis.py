@@ -17,6 +17,7 @@ class MultivariableAnalysis:
         self.combined_df = pd.concat([study_group_df.copy(), control_group_df.copy()])
         self.study_group_df = study_group_df.copy()
         self.independent_vars = []
+        self.debug = False
 
     def add_flag(self, flag_var):
         """
@@ -75,7 +76,8 @@ class MultivariableAnalysis:
         # Ensure both the dummy variable column names and the drop category are treated consistently (lowercased)
         dummies.columns = [self._clean_column_name(col) for col in dummies.columns]
         
-        print(dummies.columns)
+        if self.debug:
+            print(dummies.columns)
         
         # If no drop_category is specified, drop the first column automatically
         if drop_category is not None:
@@ -141,8 +143,9 @@ class MultivariableAnalysis:
         for var in self.independent_vars:
             if var in self.combined_df.columns:
                 crosstab = pd.crosstab(self.combined_df[var], self.combined_df[dependent_var])
-                print(f"\nCrosstab of {var} and {dependent_var}:")
-                print(crosstab)
+                if self.debug:
+                    print(f"\nCrosstab of {var} and {dependent_var}:")
+                    print(crosstab)
                 # Check for categories where the outcome is always the same
                 if (crosstab[0] == 0).any() or (crosstab[1] == 0).any():
                     print(f"Warning: Variable '{var}' may cause perfect separation.")
@@ -179,8 +182,9 @@ class MultivariableAnalysis:
 
         vif_data["VIF"] = vif_values
 
-        print("\nVariance Inflation Factor (VIF):")
-        print(vif_data)
+        if self.debug:
+            print("\nVariance Inflation Factor (VIF):")
+            print(vif_data)
         return vif_data
 
 
@@ -300,9 +304,11 @@ class MultivariableAnalysis:
         """
         try:
             self.combined_df[column_name] = self.combined_df[column_name].astype(dtype)
-            print(f"Successfully converted column '{column_name}' to {dtype}.")
+            if self.debug:
+                print(f"Successfully converted column '{column_name}' to {dtype}.")
         except Exception as e:
-            print(f"Error converting column '{column_name}' to {dtype}: {e}")
+            if self.debug:
+                print(f"Error converting column '{column_name}' to {dtype}: {e}")
         return self
     
     @staticmethod
@@ -355,6 +361,11 @@ class MultivariableAnalysis:
 
         return results_df
     
+
+    def setDebug(self, flag: bool=True):
+        self.debug = flag
+        return self
+
     def automate_analysis(self, dependent_var, vif_threshold=5.0, regularization_method='l1', alpha=0.1):
         """
         Automate the analysis by performing diagnostics, adjusting variables, and fitting the model.
@@ -369,11 +380,13 @@ class MultivariableAnalysis:
         MultivariableAnalysis: Returns the instance to allow method chaining.
         """
         # Step 1: Check data quality
-        print("Checking data quality...")
-        self.check_data_quality(dependent_var)
+        if self.debug:
+            print("Checking data quality...")
+            self.check_data_quality(dependent_var)
 
         # Step 2: Check for perfect separation and remove problematic variables
-        print("\nChecking for perfect separation...")
+        if self.debug:
+            print("\nChecking for perfect separation...")
         vars_to_remove = []
         for var in self.independent_vars:
             if var in self.combined_df.columns:
@@ -381,14 +394,16 @@ class MultivariableAnalysis:
                 # Check if any category perfectly predicts the outcome
                 zero_in_column = (crosstab == 0).any(axis=1)
                 if zero_in_column.any():
-                    print(f"Variable '{var}' may cause perfect separation and will be removed.")
+                    if self.debug:
+                        print(f"Variable '{var}' may cause perfect separation and will be removed.")
                     vars_to_remove.append(var)
         # Remove variables causing perfect separation
         for var in vars_to_remove:
             self.independent_vars.remove(var)
 
         # Step 3: Check for multicollinearity and remove variables with high VIF
-        print("\nChecking for multicollinearity...")
+        if self.debug:
+            print("\nChecking for multicollinearity...")
         while True:
             vif_data = self.check_multicollinearity()
             vif_data = vif_data[vif_data['Variable'] != 'const']  # Exclude constant term
@@ -396,21 +411,29 @@ class MultivariableAnalysis:
             if max_vif > vif_threshold:
                 # Remove the variable with the highest VIF
                 max_vif_var = vif_data.loc[vif_data['VIF'] == max_vif, 'Variable'].values[0]
-                print(f"Variable '{max_vif_var}' has VIF={max_vif:.2f} and will be removed.")
+                if self.debug:
+                    print(f"Variable '{max_vif_var}' has VIF={max_vif:.2f} and will be removed.")
                 self.independent_vars.remove(max_vif_var)
             else:
-                print("No multicollinearity issues detected.")
+                if self.debug:
+                    print("No multicollinearity issues detected.")
                 break
 
         # Step 4: Fit the model
-        print("\nFitting the model...")
+        if self.debug:
+            print("\nFitting the model...")
         try:
+            # First attempt without regularization
             self.fit_model(dependent_var)
         except Exception as e:
             print(f"Error fitting model: {e}")
             print("Attempting to fit model with regularization.")
-            self.fit_model_with_regularization(dependent_var, method=regularization_method, alpha=alpha)
+            try:
+                # Attempt to fit model with regularization as a fallback
+                self.fit_model_with_regularization(dependent_var, method=regularization_method, alpha=alpha)
+            except Exception as reg_error:
+                print(f"Error fitting model with regularization: {reg_error}")
+                print("Consider simplifying the model further or inspecting the data for issues.")
 
         # Return self to allow method chaining
         return self
-
