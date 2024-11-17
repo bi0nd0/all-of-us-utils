@@ -3,6 +3,7 @@ import numpy as np
 import statsmodels.api as sm
 import re
 import warnings
+import traceback
 
 class MultivariableAnalysis:
     def __init__(self, study_group_df, control_group_df):
@@ -14,10 +15,20 @@ class MultivariableAnalysis:
         control_group_df (pd.DataFrame): The DataFrame for the control group.
         """
         # Make copies of the dataframes to prevent unintended modifications
-        self.combined_df = pd.concat([study_group_df.copy(), control_group_df.copy()])
+        self.combined_df = pd.concat([study_group_df.copy(), control_group_df.copy()], ignore_index=True)
         self.study_group_df = study_group_df.copy()
         self.independent_vars = []
         self.debug = False
+
+    def setDebug(self, flag: bool=True):
+        """
+        Enable or disable debug mode.
+
+        Parameters:
+        flag (bool): True to enable debug mode, False to disable.
+        """
+        self.debug = flag
+        return self
 
     def add_flag(self, flag_var):
         """
@@ -40,14 +51,13 @@ class MultivariableAnalysis:
         - Lowercasing
         - Replacing spaces with underscores
         - Removing non-alphanumeric characters
-        
+
         Parameters:
         column_name (str): The column name to clean.
-        
+
         Returns:
         str: The cleaned column name.
         """
-        # Lowercase, replace spaces, and remove non-alphanumeric characters in one step
         return re.sub(r'\W+', '', column_name.lower().replace(' ', '_'))
 
     def add_dummies(self, column_name, drop_category=None):
@@ -55,43 +65,39 @@ class MultivariableAnalysis:
         Convert a categorical variable into dummy variables for a specified column,
         and drop a specified category or the first category if none is specified.
 
-        The function will:
-        - Create dummy variables for each category of the specified column.
-        - Optionally drop one category (specified or the first one by default) to avoid the dummy variable trap.
-        - Transform column names to be lowercase, replace spaces with underscores, and remove non-alphanumeric characters.
-        
         Parameters:
         column_name (str): The name of the categorical column to convert into dummy variables.
         drop_category (str, optional): The category to drop, which will serve as the reference group. If not specified, the first category will be dropped.
 
         Returns:
-        MultivariableAnalysis1: Returns the instance to allow method chaining.
-
-        Raises:
-        Warning: If the specified `drop_category` does not exist in the dummy columns.
+        MultivariableAnalysis: Returns the instance to allow method chaining.
         """
         # Generate dummy variables and apply name cleaning
         dummies = pd.get_dummies(self.combined_df[column_name], prefix=column_name, drop_first=False, dtype=int)
-              
-        # Ensure both the dummy variable column names and the drop category are treated consistently (lowercased)
+        # Clean column names
         dummies.columns = [self._clean_column_name(col) for col in dummies.columns]
-        
         if self.debug:
-            print(dummies.columns)
-        
-        # If no drop_category is specified, drop the first column automatically
+            print(f"Dummy variables for '{column_name}': {list(dummies.columns)}")
+
+        # If drop_category is specified, drop the corresponding dummy variable
         if drop_category is not None:
             # Clean the drop_category to match the dummy column names
             drop_category_cleaned = self._clean_column_name(f"{column_name}_{drop_category}")
-            print(drop_category_cleaned)
+            if self.debug:
+                print(f"Attempting to drop category '{drop_category_cleaned}' from dummies.")
             # Check if the cleaned category exists in the dummy columns and drop it if present
             if drop_category_cleaned in dummies.columns:
                 dummies.drop(columns=[drop_category_cleaned], inplace=True)
+                if self.debug:
+                    print(f"Dropped category '{drop_category_cleaned}'.")
             else:
                 print(f"Warning: The category '{drop_category}' does not exist in the column '{column_name}'. No category will be dropped.")
         else:
             # If no drop_category is specified, drop the first column automatically
-            dummies = dummies.iloc[:, 1:]
+            first_column = dummies.columns[0]
+            dummies.drop(columns=[first_column], inplace=True)
+            if self.debug:
+                print(f"Dropped first category '{first_column}' from dummies.")
 
         # Concatenate the dummy variables to the combined DataFrame
         self.combined_df = pd.concat([self.combined_df, dummies], axis=1)
@@ -140,6 +146,7 @@ class MultivariableAnalysis:
         Returns:
         None
         """
+        vars_to_remove = []
         for var in self.independent_vars:
             if var in self.combined_df.columns:
                 crosstab = pd.crosstab(self.combined_df[var], self.combined_df[dependent_var])
@@ -147,29 +154,30 @@ class MultivariableAnalysis:
                     print(f"\nCrosstab of {var} and {dependent_var}:")
                     print(crosstab)
                 # Check for categories where the outcome is always the same
-                if (crosstab[0] == 0).any() or (crosstab[1] == 0).any():
-                    print(f"Warning: Variable '{var}' may cause perfect separation.")
+                zero_in_column = (crosstab == 0).any(axis=1)
+                if zero_in_column.any():
+                    print(f"Variable '{var}' may cause perfect separation and will be removed.")
+                    vars_to_remove.append(var)
+        # Remove variables causing perfect separation
+        for var in vars_to_remove:
+            self.independent_vars.remove(var)
 
     def check_multicollinearity(self):
         """
         Calculate VIF for each independent variable to detect multicollinearity.
-        Handles cases where division by zero occurs due to perfect multicollinearity by suppressing RuntimeWarnings.
 
         Returns:
         pd.DataFrame: A DataFrame containing VIF values.
         """
         from statsmodels.stats.outliers_influence import variance_inflation_factor
-        import warnings
 
         X = self.combined_df[self.independent_vars]
         X = sm.add_constant(X)
         vif_data = pd.DataFrame()
         vif_data["Variable"] = X.columns
 
-        # Initialize an empty list to store VIF values
         vif_values = []
 
-        # Calculate VIF for each variable
         for i in range(X.shape[1]):
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -177,7 +185,6 @@ class MultivariableAnalysis:
                     vif = variance_inflation_factor(X.values, i)
                     vif_values.append(vif)
                 except (np.linalg.LinAlgError, ZeroDivisionError):
-                    # Handle cases where division by zero occurs
                     vif_values.append(np.inf)
 
         vif_data["VIF"] = vif_values
@@ -186,8 +193,6 @@ class MultivariableAnalysis:
             print("\nVariance Inflation Factor (VIF):")
             print(vif_data)
         return vif_data
-
-
 
     def check_data_quality(self, dependent_var):
         """
@@ -207,8 +212,9 @@ class MultivariableAnalysis:
 
         print("\nVariables with Zero Variance:")
         for var in self.independent_vars:
-            if self.combined_df[var].nunique() <= 1:
-                print(f"Variable '{var}' has zero variance.")
+            unique_values = self.combined_df[var].nunique()
+            if unique_values <= 1:
+                print(f"Variable '{var}' has {unique_values} unique value(s).")
 
     def plot_correlation_matrix(self):
         """
@@ -251,11 +257,18 @@ class MultivariableAnalysis:
         X = sm.add_constant(self.combined_df[self.independent_vars])
         y = self.combined_df[dependent_var]
 
+        if self.debug:
+            print("\nData used for regularized model fitting (first 5 rows):")
+            print(X.head())
+            print(y.head())
+
         # Fit the logistic regression model with regularization
         try:
             self.model = sm.Logit(y, X).fit_regularized(method=method, alpha=alpha, maxiter=1000)
         except Exception as e:
             print(f"Error fitting model with regularization: {e}")
+            print(traceback.format_exc())
+            raise  # Re-raise the exception
         return self
 
     def fit_model(self, dependent_var, robust=False):
@@ -280,6 +293,11 @@ class MultivariableAnalysis:
         X = sm.add_constant(self.combined_df[self.independent_vars])
         y = self.combined_df[dependent_var]
 
+        if self.debug:
+            print("\nData used for model fitting (first 5 rows):")
+            print(X.head())
+            print(y.head())
+
         # Fit the logistic regression model
         try:
             if robust:
@@ -288,8 +306,9 @@ class MultivariableAnalysis:
                 self.model = sm.Logit(y, X).fit(maxiter=1000)
         except Exception as e:
             print(f"Error fitting model: {e}")
+            print(traceback.format_exc())
+            raise  # Re-raise the exception
         return self
-
 
     def convert_column_to_type(self, column_name, dtype):
         """
@@ -309,8 +328,9 @@ class MultivariableAnalysis:
         except Exception as e:
             if self.debug:
                 print(f"Error converting column '{column_name}' to {dtype}: {e}")
+            raise
         return self
-    
+
     @staticmethod
     def format_p_value(p_value):
         """
@@ -326,7 +346,7 @@ class MultivariableAnalysis:
             return "<0.001"
         else:
             return f"{p_value:.3f}"
-    
+
     def get_results(self):
         """
         Retrieve and display the results of the logistic regression analysis.
@@ -334,19 +354,22 @@ class MultivariableAnalysis:
         Returns:
         pd.DataFrame: A DataFrame containing the odds ratios, confidence intervals, and formatted results.
         """
+        if not hasattr(self, 'model') or self.model is None:
+            raise AttributeError("The model has not been fitted yet. Please fit the model before getting results.")
+
         # Get the odds ratios and confidence intervals
         odds_ratios = self.model.params
         confidence_intervals = self.model.conf_int()
 
         # Create a DataFrame to store the results
         results_df = pd.DataFrame({
-            'Variable': self.model.params.index,
+            'Variable': odds_ratios.index,
             'Odds Ratio': np.exp(odds_ratios),
             'Lower CI': np.exp(confidence_intervals.iloc[:, 0]),
             'Upper CI': np.exp(confidence_intervals.iloc[:, 1]),
             'P-value': self.model.pvalues
         })
-        
+
         # Format the p-values
         results_df['P-value'] = results_df['P-value'].apply(self.format_p_value)
 
@@ -354,17 +377,13 @@ class MultivariableAnalysis:
         results_df[['Odds Ratio', 'Lower CI', 'Upper CI']] = results_df[['Odds Ratio', 'Lower CI', 'Upper CI']].round(2)
 
         # Create a new column with the formatted results
-        results_df['Formatted Results'] = results_df.apply(lambda row: f"{row['Odds Ratio']} ({row['Lower CI']}-{row['Upper CI']})", axis=1)
+        results_df['Formatted Results'] = results_df.apply(
+            lambda row: f"{row['Odds Ratio']} ({row['Lower CI']}-{row['Upper CI']})", axis=1)
 
         # Print the results DataFrame
         print(results_df)
 
         return results_df
-    
-
-    def setDebug(self, flag: bool=True):
-        self.debug = flag
-        return self
 
     def automate_analysis(self, dependent_var, vif_threshold=5.0, regularization_method='l1', alpha=0.1):
         """
@@ -387,19 +406,7 @@ class MultivariableAnalysis:
         # Step 2: Check for perfect separation and remove problematic variables
         if self.debug:
             print("\nChecking for perfect separation...")
-        vars_to_remove = []
-        for var in self.independent_vars:
-            if var in self.combined_df.columns:
-                crosstab = pd.crosstab(self.combined_df[var], self.combined_df[dependent_var])
-                # Check if any category perfectly predicts the outcome
-                zero_in_column = (crosstab == 0).any(axis=1)
-                if zero_in_column.any():
-                    if self.debug:
-                        print(f"Variable '{var}' may cause perfect separation and will be removed.")
-                    vars_to_remove.append(var)
-        # Remove variables causing perfect separation
-        for var in vars_to_remove:
-            self.independent_vars.remove(var)
+        self.check_perfect_separation(dependent_var)
 
         # Step 3: Check for multicollinearity and remove variables with high VIF
         if self.debug:
@@ -407,6 +414,10 @@ class MultivariableAnalysis:
         while True:
             vif_data = self.check_multicollinearity()
             vif_data = vif_data[vif_data['Variable'] != 'const']  # Exclude constant term
+            if vif_data.empty:
+                if self.debug:
+                    print("No variables to check for multicollinearity.")
+                break
             max_vif = vif_data['VIF'].max()
             if max_vif > vif_threshold:
                 # Remove the variable with the highest VIF
@@ -426,14 +437,16 @@ class MultivariableAnalysis:
             # First attempt without regularization
             self.fit_model(dependent_var)
         except Exception as e:
-            print(f"Error fitting model: {e}")
-            print("Attempting to fit model with regularization.")
+            if self.debug:
+                print(f"Error fitting model: {e}")
+                print("Attempting to fit model with regularization.")
             try:
                 # Attempt to fit model with regularization as a fallback
                 self.fit_model_with_regularization(dependent_var, method=regularization_method, alpha=alpha)
             except Exception as reg_error:
-                print(f"Error fitting model with regularization: {reg_error}")
-                print("Consider simplifying the model further or inspecting the data for issues.")
+                if self.debug:
+                    print(f"Error fitting model with regularization: {reg_error}")
+                raise RuntimeError("Model fitting failed even after regularization. Please check your data and variables.")
 
         # Return self to allow method chaining
         return self
