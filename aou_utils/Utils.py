@@ -228,21 +228,36 @@ class Utils:
         return updated_df
     
     @staticmethod
-    def add_flag_based_on_condition(group_df, condition_df, flag_name):
+    def add_flag_for_intersection(group_df, other_df, flag_name):
         """
-        Adds a flag to the given group DataFrame based on the presence of person_id in the condition DataFrame.
+        Adds a flag to the given group DataFrame based on the presence of person_id in another DataFrame.
 
         Parameters:
         group_df (pd.DataFrame): The DataFrame representing the group (e.g., study or control).
-        condition_df (pd.DataFrame): The DataFrame containing person_ids that meet the condition.
+        other_df (pd.DataFrame): The DataFrame containing person_ids to check for intersection.
         flag_name (str): The name of the flag column to be added to the group DataFrame.
 
         Returns:
         pd.DataFrame: The group DataFrame with the added flag column.
         """
         group_df_copy = group_df.copy()
-        group_df_copy[flag_name] = np.where(group_df_copy['person_id'].isin(condition_df['person_id']), 1, 0)
+        group_df_copy[flag_name] = np.where(group_df_copy['person_id'].isin(other_df['person_id']), 1, 0)
         return group_df_copy
+    
+    @staticmethod
+    def add_flag_based_on_condition(group_df, condition_df, flag_name):
+        """
+        Alias for add_flag_for_intersection.
+        """
+        return Utils.add_flag_for_intersection(group_df, condition_df, flag_name)
+    
+    @staticmethod
+    def flag_group_by_condition(group_df, condition_df, flag_name):
+        """
+        Alias for add_flag_based_on_condition.
+        """
+        return MyClass.add_flag_based_on_condition(group_df, condition_df, flag_name)
+
     
     @staticmethod
     def get_totals_with_labels(df, key_label_map):
