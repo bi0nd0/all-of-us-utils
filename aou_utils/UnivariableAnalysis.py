@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
+from scipy.stats import fisher_exact
 import re
+
 
 class UnivariableAnalysis:
     def __init__(self, study_group_df, control_group_df):
@@ -74,38 +76,63 @@ class UnivariableAnalysis:
         y = self.combined_df[dependent_var]
         x = self.combined_df[[independent_var]]
 
-        # Add a constant (intercept) to the independent variable
-        x = sm.add_constant(x)
+        # Check for perfect separation
+        contingency_table = pd.crosstab(self.combined_df[independent_var], self.combined_df[dependent_var])
+        if self.debug:
+            print("\nContingency Table:")
+            print(contingency_table)
 
-        # Fit the logistic regression model
-        model = sm.Logit(y, x).fit()
+        if (contingency_table == 0).values.any():
+            perform_fisher = True
+        else:
+            perform_fisher = False
 
-        # Debugging: Print the model summary to check the coefficients
-        print(model.summary())
+        if perform_fisher:
+            odds_ratio, p_value = fisher_exact(contingency_table)
+            formatted_p_value = self.format_p_value(p_value)
+            results_df = pd.DataFrame({
+                'Variable': [independent_var],
+                'Odds Ratio': [odds_ratio],
+                'Lower CI': [np.nan],  # Fisher's Exact Test does not provide CI by default
+                'Upper CI': [np.nan],
+                'P-value': [p_value]
+            })
+            print(f"Univariable analysis for {independent_var} using Fisher's Exact Test: OR = {odds_ratio:.2f}, p ≈ {formatted_p_value}")
+        else:
+            # Add a constant (intercept) to the independent variable
+            x = sm.add_constant(x)
 
-        # Get the odds ratio and 95% CI using the variable name instead of index
-        odds_ratio = np.exp(model.params[independent_var])
-        confidence_interval = np.exp(model.conf_int().loc[independent_var])
+            # Fit the logistic regression model
+            model = sm.Logit(y, x).fit()
 
-        # Get the p-value using the variable name instead of index
-        p_value = model.pvalues[independent_var]
+            # Debugging: Print the model summary to check the coefficients
+            if self.debug:
+                print(model.summary())
 
-        # Format the p-value
-        formatted_p_value = self.format_p_value(p_value)
+            # Get the odds ratio and 95% CI using the variable name instead of index
+            odds_ratio = np.exp(model.params[independent_var])
+            confidence_interval = np.exp(model.conf_int().loc[independent_var])
 
-        # Create a DataFrame with the results
-        results_df = pd.DataFrame({
-            'Variable': [independent_var],
-            'Odds Ratio': [odds_ratio],
-            'Lower CI': [confidence_interval[0]],
-            'Upper CI': [confidence_interval[1]],
-            'P-value': [p_value]
-        })
+            # Get the p-value using the variable name instead of index
+            p_value = model.pvalues[independent_var]
 
-        # Print the results
-        print(f"Univariable analysis for {independent_var}: OR = {odds_ratio:.2f} ({confidence_interval[0]:.2f}-{confidence_interval[1]:.2f}), p ≈ {formatted_p_value}")
+            # Format the p-value
+            formatted_p_value = self.format_p_value(p_value)
+
+            # Create a DataFrame with the results
+            results_df = pd.DataFrame({
+                'Variable': [independent_var],
+                'Odds Ratio': [odds_ratio],
+                'Lower CI': [confidence_interval[0]],
+                'Upper CI': [confidence_interval[1]],
+                'P-value': [p_value]
+            })
+
+            # Print the results
+            print(f"Univariable analysis for {independent_var}: OR = {odds_ratio:.2f} ({confidence_interval[0]:.2f}-{confidence_interval[1]:.2f}), p ≈ {formatted_p_value}")
 
         return results_df
+
     
     def convert_column_to_type(self, column_name, dtype):
         """

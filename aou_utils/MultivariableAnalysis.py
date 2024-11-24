@@ -8,6 +8,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 import seaborn as sns
 import matplotlib.pyplot as plt
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
+from scipy.stats import fisher_exact  # Import for Fisher's Exact Test
 
 
 class MultivariableAnalysis:
@@ -29,6 +30,8 @@ class MultivariableAnalysis:
         self.debug = False
         self.model = None
         self.maxModelIteration = 1000
+        self.main_predictor = None  # Add this attribute to track the main predictor
+
 
     def set_maxModelIteration(self, count: int):
         self.maxModelIteration = count
@@ -60,6 +63,7 @@ class MultivariableAnalysis:
         study_ids = set(self.study_group_df['person_id'])
         self.combined_df[flag_var] = self.combined_df['person_id'].apply(lambda x: 1 if x in study_ids else 0)
         self.independent_vars.append(flag_var)
+        self.main_predictor = flag_var  # Set the main predictor variable
         return self
 
     @staticmethod
@@ -175,9 +179,11 @@ class MultivariableAnalysis:
         dependent_var (str): The name of the dependent variable.
 
         Returns:
-        None
+        bool: True if perfect separation involving the main predictor is detected.
         """
         vars_to_remove = []
+        perfect_separation_main_predictor = False
+
         for var in self.independent_vars:
             if var in self.combined_df.columns:
                 crosstab = pd.crosstab(self.combined_df[var], self.combined_df[dependent_var])
@@ -188,11 +194,63 @@ class MultivariableAnalysis:
                 zero_in_column = (crosstab == 0).any(axis=1)
                 if zero_in_column.any():
                     if self.debug:
-                        print(f"Variable '{var}' may cause perfect separation and will be removed.")
-                    vars_to_remove.append(var)
-        # Remove variables causing perfect separation
+                        print(f"Variable '{var}' may cause perfect separation.")
+                    if var == self.main_predictor:
+                        perfect_separation_main_predictor = True
+                        if self.debug:
+                            print(f"Perfect separation involves the main predictor '{var}'.")
+                    else:
+                        if self.debug:
+                            print(f"Variable '{var}' will be removed due to perfect separation.")
+                        vars_to_remove.append(var)
+        # Remove variables causing perfect separation (excluding the main predictor)
         for var in vars_to_remove:
             self.independent_vars.remove(var)
+
+        return perfect_separation_main_predictor
+
+    def perform_fishers_exact_test(self, dependent_var):
+        """
+        Perform Fisher's Exact Test between the main predictor and the dependent variable.
+
+        Parameters:
+        dependent_var (str): The name of the dependent variable.
+
+        Returns:
+        dict: A dictionary containing the odds ratio and p-value.
+        """
+        if self.main_predictor is None:
+            raise ValueError("Main predictor variable is not set.")
+
+        # Construct contingency table
+        contingency_table = pd.crosstab(
+            self.combined_df[self.main_predictor],
+            self.combined_df[dependent_var]
+        )
+
+        if self.debug:
+            print("\nContingency Table for Fisher's Exact Test:")
+            print(contingency_table)
+
+        # Ensure the table is 2x2
+        if contingency_table.shape != (2, 2):
+            raise ValueError("Fisher's Exact Test requires a 2x2 contingency table.")
+
+        odds_ratio, p_value = fisher_exact(contingency_table)
+        if self.debug:
+            print(f"\nFisher's Exact Test Results:\nOdds Ratio: {odds_ratio}\nP-value: {p_value}")
+
+        # Prepare the results in the same format as get_results()
+        results_df = pd.DataFrame({
+            'Variable': [self.main_predictor],
+            'Odds Ratio': [odds_ratio],
+            'Lower CI': [np.nan],  # Fisher's Exact Test does not provide CI by default
+            'Upper CI': [np.nan],
+            'P-value': [self.format_p_value(p_value)],
+            'Formatted Results': [f"{odds_ratio:.2f} (Exact)"]
+        })
+
+        return results_df
 
     def check_multicollinearity(self):
         """
@@ -403,49 +461,53 @@ class MultivariableAnalysis:
         Returns:
         pd.DataFrame: A DataFrame containing the odds ratios, confidence intervals, and formatted results.
         """
-        if not hasattr(self, 'model') or self.model is None:
+        if hasattr(self, 'results_df') and self.results_df is not None:
+            # Results from Fisher's Exact Test or other alternative method
+            results_df = self.results_df
+        elif not hasattr(self, 'model') or self.model is None:
             raise AttributeError("The model has not been fitted yet. Please fit the model before getting results.")
+        else:
+            # Get the odds ratios and confidence intervals
+            odds_ratios = self.model.params
+            confidence_intervals = self.model.conf_int()
 
-        # Get the odds ratios and confidence intervals
-        odds_ratios = self.model.params
-        confidence_intervals = self.model.conf_int()
+            # Use a safe exponential function to handle overflows
+            def safe_exp(x):
+                with np.errstate(over='ignore', under='ignore'):
+                    return np.exp(x)
 
-        # Use a safe exponential function to handle overflows
-        def safe_exp(x):
-            with np.errstate(over='ignore', under='ignore'):
-                return np.exp(x)
+            odds_ratios_exp = odds_ratios.apply(safe_exp)
+            confidence_intervals_exp = confidence_intervals.applymap(safe_exp)
 
-        odds_ratios_exp = odds_ratios.apply(safe_exp)
-        confidence_intervals_exp = confidence_intervals.applymap(safe_exp)
+            # Replace infinite values with NaN
+            odds_ratios_exp.replace([np.inf, -np.inf], np.nan, inplace=True)
+            confidence_intervals_exp.replace([np.inf, -np.inf], np.nan, inplace=True)
 
-        # Replace infinite values with NaN
-        odds_ratios_exp.replace([np.inf, -np.inf], np.nan, inplace=True)
-        confidence_intervals_exp.replace([np.inf, -np.inf], np.nan, inplace=True)
+            # Create a DataFrame to store the results
+            results_df = pd.DataFrame({
+                'Variable': odds_ratios.index,
+                'Odds Ratio': odds_ratios_exp,
+                'Lower CI': confidence_intervals_exp.iloc[:, 0],
+                'Upper CI': confidence_intervals_exp.iloc[:, 1],
+                'P-value': self.model.pvalues
+            })
 
-        # Create a DataFrame to store the results
-        results_df = pd.DataFrame({
-            'Variable': odds_ratios.index,
-            'Odds Ratio': odds_ratios_exp,
-            'Lower CI': confidence_intervals_exp.iloc[:, 0],
-            'Upper CI': confidence_intervals_exp.iloc[:, 1],
-            'P-value': self.model.pvalues
-        })
+            # Format the p-values
+            results_df['P-value'] = results_df['P-value'].apply(self.format_p_value)
 
-        # Format the p-values
-        results_df['P-value'] = results_df['P-value'].apply(self.format_p_value)
+            # Round the odds ratios and confidence intervals to 2 decimal places
+            results_df[['Odds Ratio', 'Lower CI', 'Upper CI']] = results_df[['Odds Ratio', 'Lower CI', 'Upper CI']].round(2)
 
-        # Round the odds ratios and confidence intervals to 2 decimal places
-        results_df[['Odds Ratio', 'Lower CI', 'Upper CI']] = results_df[['Odds Ratio', 'Lower CI', 'Upper CI']].round(2)
-
-        # Create a new column with the formatted results
-        results_df['Formatted Results'] = results_df.apply(
-            lambda row: f"{row['Odds Ratio']} ({row['Lower CI']}-{row['Upper CI']})", axis=1)
+            # Create a new column with the formatted results
+            results_df['Formatted Results'] = results_df.apply(
+                lambda row: f"{row['Odds Ratio']} ({row['Lower CI']}-{row['Upper CI']})", axis=1)
 
         # Print the results DataFrame if required
         if print_results:
             print(results_df)
 
         return results_df
+
 
     def automate_analysis(self, dependent_var, vif_threshold=5.0, regularization_method='l1', alpha=0.1, standardize=False):
         """
@@ -464,12 +526,20 @@ class MultivariableAnalysis:
         # Step 1: Check data quality
         if self.debug:
             print("Checking data quality...")
-            self.check_data_quality(dependent_var)
+        self.check_data_quality(dependent_var)
 
         # Step 2: Check for perfect separation and remove problematic variables
         if self.debug:
             print("\nChecking for perfect separation...")
-        self.check_perfect_separation(dependent_var)
+        perfect_separation_main_predictor = self.check_perfect_separation(dependent_var)
+
+        # If perfect separation involves the main predictor, perform Fisher's Exact Test
+        if perfect_separation_main_predictor:
+            if self.debug:
+                print("\nPerfect separation detected involving the main predictor. Performing Fisher's Exact Test.")
+            self.model = None  # Set model to None to indicate alternative analysis
+            self.results_df = self.perform_fishers_exact_test(dependent_var)
+            return self
 
         # Step 3: Check for multicollinearity and remove variables with high VIF
         if self.debug:
