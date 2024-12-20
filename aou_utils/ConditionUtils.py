@@ -103,6 +103,7 @@ class ConditionUtils:
       
       return result_df
     
+    @staticmethod
     def calculate_statistics(study_df, control_df, conditions):
       """
       Generates a summary table comparing the prevalence of specific conditions between

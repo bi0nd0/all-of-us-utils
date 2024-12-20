@@ -3,6 +3,7 @@ from .QueryBuilder import QueryBuilder
 from .SurveyQueryBuilder import SurveyQueryBuilder
 from .AgeCalculator import AgeCalculator
 from .CohortGenerator import CohortGenerator
+from .AgeAtDiagnosisQueryBuilder import AgeAtDiagnosisQueryBuilder
 from .ConceptsTableMaker import ConceptsTableMaker
 from .SmokerStatusUtility import SmokerStatusUtility
 from .StatisticsUtils import StatisticsUtils
@@ -17,6 +18,7 @@ __all__ = [
     'SurveyQueryBuilder',
     'AgeCalculator',
     'CohortGenerator',
+    'AgeAtDiagnosisQueryBuilder'
     'ConceptsTableMaker',
     'SmokerStatusUtility',
     'StatisticsUtils',
