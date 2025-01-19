@@ -27,6 +27,6 @@ __all__ = [
     'MedicationUtils',
     'MultivariableAnalysis',
     'UnivariableAnalysis',
-    'ConditionMedicationQueryBuilder'
-    'PValueUtils'
+    'ConditionMedicationQueryBuilder',
+    'PValueUtils',
 ]
