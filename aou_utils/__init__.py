@@ -7,6 +7,7 @@ from .AgeAtDiagnosisQueryBuilder import AgeAtDiagnosisQueryBuilder
 from .ConceptsTableMaker import ConceptsTableMaker
 from .SmokerStatusUtility import SmokerStatusUtility
 from .StatisticsUtils import StatisticsUtils
+from .ConditionUtils import ConditionUtils
 from .MedicationUtils import MedicationUtils
 from .MultivariableAnalysis import MultivariableAnalysis
 from .UnivariableAnalysis import UnivariableAnalysis
@@ -19,7 +20,7 @@ __all__ = [
     'SurveyQueryBuilder',
     'AgeCalculator',
     'CohortGenerator',
-    'AgeAtDiagnosisQueryBuilder'
+    'AgeAtDiagnosisQueryBuilder',
     'ConceptsTableMaker',
     'SmokerStatusUtility',
     'StatisticsUtils',
