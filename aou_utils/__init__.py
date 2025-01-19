@@ -10,6 +10,7 @@ from .StatisticsUtils import StatisticsUtils
 from .MedicationUtils import MedicationUtils
 from .MultivariableAnalysis import MultivariableAnalysis
 from .UnivariableAnalysis import UnivariableAnalysis
+from .ConditionMedicationQueryBuilder import ConditionMedicationQueryBuilder
 from .PValueUtils import PValueUtils
 
 __all__ = [
@@ -26,5 +27,6 @@ __all__ = [
     'MedicationUtils',
     'MultivariableAnalysis',
     'UnivariableAnalysis',
+    'ConditionMedicationQueryBuilder'
     'PValueUtils'
 ]
