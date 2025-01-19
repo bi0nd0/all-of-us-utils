@@ -1,39 +1,70 @@
 class ConditionMedicationQueryBuilder:
     """
     A Builder class for creating a BigQuery query that:
-      1) Identifies a cohort of patients with certain condition(s).
-      2) Retrieves their person-level info.
-      3) Retrieves their most-recent medication info.
+      1) Identifies a cohort of patients based on one or more 'blocks' of condition IDs,
+         using the original subquery logic referencing cb_search_all_events + cb_criteria.
+         - Each block uses OR logic among its IDs via "concept_id IN (...)".
+         - Multiple blocks are ANDed together in the final 'cohort' CTE.
+      2) Retrieves their person-level info (CTE 'persons').
+      3) Retrieves their most-recent medication info (CTE 'medications').
     """
+
     def __init__(self, dataset: str):
         self.dataset = dataset
-        self.condition_ids = []
+
+        # We'll store each "block" as a list of condition IDs.
+        # For example:
+        #   with_conditions([c1, c2]) => block #1
+        #   and_with_conditions([c3, c4]) => block #2
+        # In the final query, block #1 and block #2 are ANDed, while
+        # within each block it's concept_id IN (c1, c2...) => OR logic.
+        self.condition_blocks = []
+
+        # We'll store medication concept IDs in a list as well.
         self.medication_ids = []
 
     def with_conditions(self, condition_ids: list[int]):
         """
-        Specify a list of condition concept IDs (e.g. [316866, 4066824, etc.])
-        to include in the 'cohort' logic.
+        Create (or replace) the list of blocks, starting with the given condition_ids
+        as the first block. If your design wants to *append* to any existing blocks
+        instead of clearing them, adjust accordingly.
+        
+        This block will produce a single subquery with `concept_id IN (c1, c2, ...)`.
         """
-        self.condition_ids = condition_ids
-        return self  # Return self to allow chaining
+        self.condition_blocks = []
+        self.condition_blocks.append(condition_ids)
+        return self
+
+    def and_with_conditions(self, condition_ids: list[int]):
+        """
+        Append another block of condition IDs. This results in an additional
+        `AND cb_search_person.person_id IN ( subquery_for_these_ids )` line
+        in the final query. 
+        """
+        self.condition_blocks.append(condition_ids)
+        return self
 
     def with_medications(self, medication_ids: list[int]):
         """
-        Specify a list of medication concept IDs (e.g. [1901903, 1310149, ...])
-        for the medication query filter.
+        Specify a list of medication concept IDs for the medication query filter
+        in drug_exposure.
         """
         self.medication_ids = medication_ids
-        return self  # Return self to allow chaining
+        return self
 
-    def _build_condition_subquery(self, condition_id: int) -> str:
+    def _build_condition_block_subquery(self, condition_ids: list[int]) -> str:
         """
-        Returns a snippet of SQL that checks for the given condition_id.
+        Return the subquery snippet (wrapped in the original logic) for a block
+        of condition IDs, using your 'rank1' pattern from cb_criteria.
         
-        Note: This logic is modeled on your existing examples. 
-        It pulls all person_ids who have the selected condition_id
-        in the cb_search_all_events/cb_criteria tables.
+        The difference is:
+          WHERE concept_id IN ({c1, c2, ...})  (OR among c1, c2, etc.)
+        rather than concept_id IN ({single_id}).
         """
+
+        # e.g., "316866, 4066824"
+        condition_list_str = ", ".join(str(cid) for cid in condition_ids)
+
         return f"""
             SELECT criteria.person_id
             FROM (
@@ -46,7 +77,7 @@ class ConditionMedicationQueryBuilder:
                     JOIN (
                         SELECT CAST(cr.id as STRING) AS id
                         FROM `{self.dataset}.cb_criteria` cr
-                        WHERE concept_id IN ({condition_id})
+                        WHERE concept_id IN ({condition_list_str})
                           AND full_text LIKE '%_rank1]%'
                     ) a
                       ON (
@@ -64,119 +95,101 @@ class ConditionMedicationQueryBuilder:
         """
 
     def build(self) -> str:
-      """
-      Construct and return the final BigQuery SQL query.
-      """
-      # 1) Build up the "cohort AS (...)" with one subquery per condition
-      #
-      # We start with "SELECT DISTINCT person_id FROM cb_search_person" 
-      # then for each condition, we do "AND person_id IN ( ... )"
-      #
-      # If no conditions were provided, you might want different logic 
-      # (e.g. no WHERE conditions). For demonstration, we'll handle 
-      # an empty condition list by returning everyone from cb_search_person.
-      #
-      # If you prefer, you can throw an error if condition_ids is empty. 
-      # That is up to your business logic.
-      
-      cohort_conditions = ""
-      if self.condition_ids:
-          for cond_id in self.condition_ids:
-              cohort_conditions += f"""
-                AND cb_search_person.person_id IN (
-                    {self._build_condition_subquery(cond_id)}
-                )
-              """
-      
-      cohort_cte = f"""
-        cohort AS (
-          SELECT DISTINCT person_id
-          FROM `{self.dataset}.cb_search_person` cb_search_person
-          WHERE 1=1
-          {cohort_conditions}
-        )
-      """
-
-      # 2) Build the persons CTE: minimal example pulling birth_datetime / sex_at_birth
-      persons_cte = f"""
-        persons AS (
-          SELECT
-            p.person_id,
-            p.birth_datetime,
-            c.concept_name AS sex_at_birth
-          FROM `{self.dataset}.person` p
-          LEFT JOIN `{self.dataset}.concept` c
-            ON c.concept_id = p.sex_at_birth_concept_id
-          WHERE p.person_id IN (SELECT person_id FROM cohort)
-        )
-      """
-
-      # 3) Build the medications CTE: filter by medication IDs (if any)
-      # If there are no medication_ids, we can either remove the filter or handle differently.
-      # We'll assume the user always supplies at least one medication ID. If empty, it would cause
-      # `drug_concept_id IN ()` which is invalid. So we skip or raise an error.
-      medication_filter = ""
-      if self.medication_ids:
-          # e.g. "1901903, 1310149"
-          medication_list_str = ", ".join(str(m) for m in self.medication_ids)
-          medication_filter = f"AND drug_concept_id IN ({medication_list_str})"
-      else:
-          # If no medication_ids are specified, you might want to omit the filter,
-          # or handle it as needed. We'll simply omit the filter entirely, returning all meds
-          medication_filter = ""
-
-      medications_cte = f"""
-        medications AS (
-          SELECT
-            person_id,
-            drug_exposure_id,
-            drug_concept_id,
-            drug_exposure_start_date,
-            drug_exposure_end_date,
-            drug_type_concept_id,
-            stop_reason,
-            refills,
-            quantity,
-            days_supply,
-            sig,
-            route_concept_id,
-            lot_number,
-            provider_id,
-            visit_occurrence_id,
-            ROW_NUMBER() OVER (
-              PARTITION BY person_id, drug_concept_id
-              ORDER BY drug_exposure_start_date DESC,
-                      drug_exposure_end_date   DESC,
-                      drug_exposure_id         DESC
-            ) AS recency_rank
-          FROM `{self.dataset}.drug_exposure`
-          WHERE person_id IN (SELECT person_id FROM cohort)
-            {medication_filter}
-        )
-      """
-
-      # 4) Final SELECT
-      final_select = f"""
-          SELECT
-            persons.*,
-            ext.src_id,
-            medications.* EXCEPT (person_id, drug_exposure_id, recency_rank)
-          FROM medications
-          LEFT JOIN persons USING (person_id)
-          LEFT JOIN `{self.dataset}.drug_exposure_ext` ext USING (drug_exposure_id)
-          WHERE recency_rank = 1
-          ORDER BY person_id, drug_exposure_id
+        """
+        Construct and return the final BigQuery SQL query.
         """
 
-          # Combine everything into one query with CTEs
-      query = f"""
-        -- Example single query with multiple CTEs
-        WITH
-        {cohort_cte},
-        {persons_cte},
-        {medications_cte}
-        {final_select};
-      """
+        # 1) Build the "cohort" CTE, iterating over each block
+        #    Each block yields an AND subquery.
+        cohort_conditions = ""
+        for block in self.condition_blocks:
+            sub_query = self._build_condition_block_subquery(block)
+            cohort_conditions += f"""
+              AND cb_search_person.person_id IN (
+                  {sub_query}
+              )
+            """
 
-      # Return the final SQL string
-      return query.strip()
+        cohort_cte = f"""
+          cohort AS (
+            SELECT DISTINCT cb_search_person.person_id
+            FROM `{self.dataset}.cb_search_person` cb_search_person
+            WHERE 1=1
+            {cohort_conditions}
+          )
+        """
+
+        # 2) Persons CTE
+        persons_cte = f"""
+          persons AS (
+            SELECT
+              p.person_id,
+              p.birth_datetime,
+              c.concept_name AS sex_at_birth
+            FROM `{self.dataset}.person` p
+            LEFT JOIN `{self.dataset}.concept` c
+                   ON c.concept_id = p.sex_at_birth_concept_id
+            WHERE p.person_id IN (SELECT person_id FROM cohort)
+          )
+        """
+
+        # 3) Medications CTE: Filter by medication_ids if given
+        medication_filter = ""
+        if self.medication_ids:
+            meds_str = ", ".join(str(m) for m in self.medication_ids)
+            medication_filter = f"AND drug_concept_id IN ({meds_str})"
+
+        medications_cte = f"""
+          medications AS (
+            SELECT
+              person_id,
+              drug_exposure_id,
+              drug_concept_id,
+              drug_exposure_start_date,
+              drug_exposure_end_date,
+              drug_type_concept_id,
+              stop_reason,
+              refills,
+              quantity,
+              days_supply,
+              sig,
+              route_concept_id,
+              lot_number,
+              provider_id,
+              visit_occurrence_id,
+              ROW_NUMBER() OVER (
+                PARTITION BY person_id, drug_concept_id
+                ORDER BY drug_exposure_start_date DESC,
+                         drug_exposure_end_date   DESC,
+                         drug_exposure_id         DESC
+              ) AS recency_rank
+            FROM `{self.dataset}.drug_exposure`
+            WHERE person_id IN (SELECT person_id FROM cohort)
+              {medication_filter}
+          )
+        """
+
+        # 4) Final SELECT
+        final_select = f"""
+            SELECT
+              persons.*,
+              ext.src_id,
+              medications.* EXCEPT (person_id, drug_exposure_id, recency_rank)
+            FROM medications
+            LEFT JOIN persons USING (person_id)
+            LEFT JOIN `{self.dataset}.drug_exposure_ext` ext USING (drug_exposure_id)
+            WHERE recency_rank = 1
+            ORDER BY person_id, drug_exposure_id
+        """
+
+        # Combine everything:
+        query = f"""
+            -- Example single query with multiple CTEs
+            WITH
+            {cohort_cte},
+            {persons_cte},
+            {medications_cte}
+            {final_select};
+        """
+
+        return query.strip()
