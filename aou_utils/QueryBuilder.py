@@ -82,6 +82,27 @@ class QueryBuilder:
         """
         self.additional_selections.append(age_selection)
         return self
+    
+    def calc_age_with_timezone(self, date, birth_date_key='birth_datetime', timezone='UTC'):
+        # Convert the date to the proper format
+        date_str = datetime.strptime(date, '%Y-%m-%d').strftime('%Y-%m-%d')
+
+        # Calculate the age with adjustment for whether the birthday has passed this year
+        age_selection = f"""
+            DATE_DIFF(
+                DATE('{date_str}'),
+                DATE(TIMESTAMP(person.{birth_date_key}), '{timezone}'),
+                YEAR
+            ) - 
+            CAST(
+                FORMAT_DATE('%m%d', DATE('{date_str}')) < FORMAT_DATE('%m%d', DATE(TIMESTAMP(person.{birth_date_key}), '{timezone}'))
+                AS INT64
+            ) AS age
+        """
+        self.additional_selections.append(age_selection)
+        return self
+
+
 
 
     
