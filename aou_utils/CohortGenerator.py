@@ -82,6 +82,40 @@ class CohortGenerator:
         self.criteria.append(condition_criteria)
         return self
 
+    def withMeasurement(self, measurement_key: str, tolerance: float):
+        """
+        Add a measurement criterion for matching cases and controls based on a given measurement value.
+        
+        Parameters:
+        - measurement_key (str): The name of the column representing the measurement (e.g., 'BMI').
+        - tolerance (float): Acceptable plus/minus difference between the case's and control's measurement.
+        
+        Returns:
+        - CohortGenerator: The updated instance with the measurement criterion added.
+        """
+        # Ensure the measurement_key column exists in both DataFrames
+        if measurement_key not in self.case_df.columns or measurement_key not in self.control_df.columns:
+            raise KeyError(f"Column '{measurement_key}' does not exist in one of the DataFrames.")
+        
+        # Ensure the measurement columns are numeric
+        self.case_df[measurement_key] = pd.to_numeric(self.case_df[measurement_key], errors='coerce')
+        self.control_df[measurement_key] = pd.to_numeric(self.control_df[measurement_key], errors='coerce')
+        
+        # Drop any rows with NaN values in the measurement column
+        self.case_df = self.case_df.dropna(subset=[measurement_key])
+        self.control_df = self.control_df.dropna(subset=[measurement_key])
+        
+        def measurement_criteria(case_row, potential_matches):
+            # Calculate the absolute difference for the measurement
+            potential_matches['measurement_diff'] = np.abs(potential_matches[measurement_key] - case_row[measurement_key])
+            # Filter based on the specified tolerance
+            potential_matches = potential_matches[potential_matches['measurement_diff'] <= tolerance]
+            # Sort by the difference for the best matches
+            return potential_matches.sort_values('measurement_diff')
+        
+        self.criteria.append(measurement_criteria)
+        return self
+
     def find_matches(self, case_row: pd.Series, ratio: int) -> pd.DataFrame:
         """Finds matching controls for a given case based on dynamic criteria."""
         potential_matches = self.control_df.copy()

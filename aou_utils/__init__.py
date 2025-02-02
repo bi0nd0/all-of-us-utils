@@ -13,6 +13,8 @@ from .MultivariableAnalysis import MultivariableAnalysis
 from .UnivariableAnalysis import UnivariableAnalysis
 from .ConditionMedicationQueryBuilder import ConditionMedicationQueryBuilder
 from .PValueUtils import PValueUtils
+from .PropensityScoreMatcher.PropensityScoreMatcher import PropensityScoreMatcher
+from .MostRecentMeasurementQueryBuilder import MostRecentMeasurementQueryBuilder
 
 __all__ = [
     'Utils',
@@ -30,4 +32,6 @@ __all__ = [
     'UnivariableAnalysis',
     'ConditionMedicationQueryBuilder',
     'PValueUtils',
+    'PropensityScoreMatcher',
+    'MostRecentMeasurementQueryBuilder',
 ]

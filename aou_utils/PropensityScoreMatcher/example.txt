@@ -1,0 +1,38 @@
+# ----------------------
+# Example of Using the Class
+# ----------------------
+
+if __name__ == '__main__':
+    # Create synthetic data for demonstration:
+    np.random.seed(42)
+    # Study group: 10 patients with the condition "stinky brain"
+    study_data = pd.DataFrame({
+        'age': np.random.randint(50, 70, 10),
+        'sex': np.random.choice([0, 1], 10),
+        'race': np.random.choice([1, 2, 3], 10),
+        'ethnicity': np.random.choice([0, 1], 10)
+    })
+    
+    # Control group: 40 patients without the condition
+    control_data = pd.DataFrame({
+        'age': np.random.randint(50, 70, 40),
+        'sex': np.random.choice([0, 1], 40),
+        'race': np.random.choice([1, 2, 3], 40),
+        'ethnicity': np.random.choice([0, 1], 40)
+    })
+    
+    # Create an instance of the matcher
+    matcher = PropensityScoreMatcher(study_data, control_data)
+    
+    # Configure the matcher with covariates one at a time and specify 4:1 matching
+    matcher.add_covariate('age')\
+           .add_covariate('sex')\
+           .add_covariate('race')\
+           .add_covariate('ethnicity')\
+           .set_num_neighbors(4)
+    
+    # Run the matching process
+    results = matcher.run()
+    
+    # Display the results using the static method
+    PropensityScoreMatcher.display_results(results)
