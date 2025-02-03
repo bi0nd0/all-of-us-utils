@@ -1,5 +1,5 @@
 import pandas as pd
-from .PValueUtils import PValueUtils
+from .PValueHelper import PValueHelper
 from .PValueCalculator import PValueCalculator
 
 class SurveyPValueCalculator(PValueCalculator):
@@ -9,6 +9,6 @@ class SurveyPValueCalculator(PValueCalculator):
         self.label = label
 
     def calculate(self) -> pd.DataFrame:
-        p_val = PValueUtils.calculate_survey_p_value(self.study_df, self.control_df)
-        formatted = PValueUtils.format_p_value(p_val)
+        p_val = PValueHelper.calculate_survey_p_value(self.study_df, self.control_df)
+        formatted = PValueHelper.format_p_value(p_val)
         return pd.DataFrame([{'Variable': self.label, 'Type': 'Survey', 'P-value': formatted}])

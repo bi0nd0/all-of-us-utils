@@ -2,15 +2,23 @@ import numpy as np
 import pandas as pd
 from scipy.stats import chi2_contingency, ranksums, fisher_exact
 
-class PValueUtils:
+class PValueHelper:
     @staticmethod
     def calculate_p_value_continuous(group1_df, group2_df, column_name):
         """
         Calculate the P-value for a continuous variable using the Wilcoxon rank-sum test.
+        Converts the column data to numeric (coercing errors to NaN) and drops NaN values.
         """
         try:
-            group1_values = group1_df[column_name]
-            group2_values = group2_df[column_name]
+            # Convert the column values to numeric, coercing errors (non-numeric values become NaN)
+            group1_values = pd.to_numeric(group1_df[column_name], errors='coerce').dropna()
+            group2_values = pd.to_numeric(group2_df[column_name], errors='coerce').dropna()
+
+            # Check if there is enough data after conversion.
+            if group1_values.empty or group2_values.empty:
+                raise ValueError("Not enough numeric data available in one of the groups after conversion.")
+
+            # Run the Wilcoxon rank-sum test.
             _, p_value = ranksums(group1_values, group2_values)
             print(f"Wilcoxon rank-sum test for {column_name}: p-value = {p_value}")
             return p_value

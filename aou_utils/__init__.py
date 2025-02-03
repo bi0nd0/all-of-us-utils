@@ -12,10 +12,10 @@ from .MedicationUtils import MedicationUtils
 from .MultivariableAnalysis import MultivariableAnalysis
 from .UnivariableAnalysis import UnivariableAnalysis
 from .ConditionMedicationQueryBuilder import ConditionMedicationQueryBuilder
-# from .PValueUtils import PValueUtils
+from .PValueUtils import PValueUtils
 from .PropensityScoreMatcher.PropensityScoreMatcher import PropensityScoreMatcher
 from .MostRecentMeasurementQueryBuilder import MostRecentMeasurementQueryBuilder
-from .PValueCalculator.PValueUtils import PValueUtils
+from .PValueCalculator.PValueHelper import PValueHelper
 from .PValueCalculator.PValueAggregator import PValueAggregator
 from .PValueCalculator.ContinuousPValueCalculator import ContinuousPValueCalculator
 from .PValueCalculator.CategoricalPValueCalculator import CategoricalPValueCalculator
@@ -40,6 +40,7 @@ __all__ = [
     'PropensityScoreMatcher',
     'MostRecentMeasurementQueryBuilder',
     'PValueUtils',
+    'PValueHelper',
     'PValueCalculator',
     'PValueAggregator',
     'ContinuousPValueCalculator',

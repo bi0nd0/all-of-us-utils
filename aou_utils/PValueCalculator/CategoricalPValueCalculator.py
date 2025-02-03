@@ -1,5 +1,5 @@
 import pandas as pd
-from .PValueUtils import PValueUtils
+from .PValueHelper import PValueHelper
 from .PValueCalculator import PValueCalculator
 
 class CategoricalPValueCalculator(PValueCalculator):
@@ -10,6 +10,6 @@ class CategoricalPValueCalculator(PValueCalculator):
         self.label = label if label is not None else variable
 
     def calculate(self) -> pd.DataFrame:
-        p_val = PValueUtils.calculate_p_value_categorical(self.study_df, self.control_df, self.variable)
-        formatted = PValueUtils.format_p_value(p_val)
+        p_val = PValueHelper.calculate_p_value_categorical(self.study_df, self.control_df, self.variable)
+        formatted = PValueHelper.format_p_value(p_val)
         return pd.DataFrame([{'Variable': self.label, 'Type': 'Categorical', 'P-value': formatted}])
