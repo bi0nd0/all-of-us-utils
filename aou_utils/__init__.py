@@ -15,15 +15,12 @@ from .ConditionMedicationQueryBuilder import ConditionMedicationQueryBuilder
 # from .PValueUtils import PValueUtils
 from .PropensityScoreMatcher.PropensityScoreMatcher import PropensityScoreMatcher
 from .MostRecentMeasurementQueryBuilder import MostRecentMeasurementQueryBuilder
-from .PValueCalculator import (
-    PValueUtils,
-    PValueCalculator,
-    PValueAggregator,
-    ContinuousPValueCalculator,
-    CategoricalPValueCalculator,
-    SexAtBirthPValueCalculator,
-    SurveyPValueCalculator,
-)
+from .PValueCalculator.PValueUtils import PValueUtils
+from .PValueCalculator.PValueAggregator import PValueAggregator
+from .PValueCalculator.ContinuousPValueCalculator import ContinuousPValueCalculator
+from .PValueCalculator.CategoricalPValueCalculator import CategoricalPValueCalculator
+from .PValueCalculator.SexAtBirthPValueCalculator import SexAtBirthPValueCalculator
+from .PValueCalculator.SurveyPValueCalculator import SurveyPValueCalculator
 
 __all__ = [
     'Utils',
