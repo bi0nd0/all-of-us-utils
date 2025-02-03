@@ -1,6 +1,6 @@
 import pandas as pd
-from PValueUtils import PValueUtils
-from PValueCalculator import PValueCalculator
+from PValueCalculator.PValueUtils import PValueUtils
+from PValueCalculator.PValueCalculator import PValueCalculator
 
 class SexAtBirthPValueCalculator(PValueCalculator):
     def __init__(self, study_df: pd.DataFrame, control_df: pd.DataFrame, label: str = "Sex at Birth"):

@@ -1,5 +1,5 @@
 import pandas as pd
-from PValueCalculator import PValueCalculator
+from PValueCalculator.PValueCalculator import PValueCalculator
 
 class PValueAggregator:
     def __init__(self):
