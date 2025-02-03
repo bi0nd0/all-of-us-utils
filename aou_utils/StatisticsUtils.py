@@ -115,3 +115,43 @@ class StatisticsUtils:
         grouped_df = df.groupby(['answer_concept_id', 'answer']).size().reset_index(name='count')
 
         # Use the provided total if availa
+
+    @staticmethod
+    def calculate_median(df: pd.DataFrame, column_name: str):
+        """
+        Calculate the median for a given column in a DataFrame.
+        The data is converted to numeric (non-numeric values become NaN) and NaN values are dropped.
+        
+        Parameters:
+            df (pd.DataFrame): The input DataFrame.
+            column_name (str): The name of the column to calculate the median on.
+            
+        Returns:
+            float: The median of the column.
+        """
+        # Convert the column to numeric, coercing errors (non-numeric values become NaN)
+        numeric_data = pd.to_numeric(df[column_name], errors='coerce')
+        # Drop NaN values
+        clean_data = numeric_data.dropna()
+        # Return the median
+        return clean_data.median()
+
+    @staticmethod
+    def calculate_std(df: pd.DataFrame, column_name: str):
+        """
+        Calculate the standard deviation for a given column in a DataFrame.
+        The data is converted to numeric (non-numeric values become NaN) and NaN values are dropped.
+        
+        Parameters:
+            df (pd.DataFrame): The input DataFrame.
+            column_name (str): The name of the column to calculate the standard deviation on.
+            
+        Returns:
+            float: The standard deviation of the column.
+        """
+        # Convert the column to numeric, coercing errors (non-numeric values become NaN)
+        numeric_data = pd.to_numeric(df[column_name], errors='coerce')
+        # Drop NaN values
+        clean_data = numeric_data.dropna()
+        # Return the standard deviation
+        return clean_data.std()
