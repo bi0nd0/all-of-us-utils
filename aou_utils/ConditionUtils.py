@@ -1,7 +1,7 @@
 import pandas as pd
 from scipy.stats import fisher_exact
 import statsmodels.api as sm
-from aou_utils.PValueUtils import PValueUtils
+from aou_utils.PValueCalculator.PValueUtils import PValueUtils
 class ConditionUtils:
     def __init__(self, dataset):
         self.dataset = dataset
