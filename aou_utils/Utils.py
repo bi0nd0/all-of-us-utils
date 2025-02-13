@@ -319,3 +319,37 @@ class Utils:
             result_df[new_col_name] = result_df[new_col_name].fillna(missing_value)
         
         return result_df
+
+    @staticmethod
+    def count_unique_values(dataframe, target_col, transform_fn=None):
+        """
+        Counts unique values in a specified column of a DataFrame and returns a new DataFrame with the results.
+        
+        Parameters:
+            dataframe (pd.DataFrame): The DataFrame to analyze.
+            target_col (str): The name of the column whose unique values will be counted.
+            transform_fn (callable, optional): An optional function that transforms each unique value.
+                                            If provided, each value is passed through this function
+                                            before being stored in the 'value' column.
+        
+        Returns:
+            pd.DataFrame: A new DataFrame with two columns:
+                        - 'value': The unique values (or their transformed representation).
+                        - 'total': The count of each unique value.
+        """
+        # Count unique values; dropna=False ensures NaN values are also counted
+        counts = dataframe[target_col].value_counts(dropna=False)
+        
+        # Apply the transformation function if provided, otherwise use the raw unique values
+        if transform_fn is not None:
+            values = [transform_fn(val) for val in counts.index]
+        else:
+            values = counts.index.tolist()
+        
+        # Create the result DataFrame
+        result_df = pd.DataFrame({
+            'value': values,
+            'total': counts.values
+        })
+        
+        return result_df
