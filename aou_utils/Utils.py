@@ -283,3 +283,39 @@ class Utils:
         })
 
         return result
+    
+    @staticmethod
+    def add_column_from_df(main_df, lookup_df, target_col, new_col_name, merge_on='person_id', missing_value=None):
+        """
+        Returns a new DataFrame based on main_df with an added column from lookup_df.
+        
+        The function performs a left merge using the specified merge key (default is 'person_id').
+        It extracts the column `target_col` from lookup_df, renames it to `new_col_name`, and merges it into main_df.
+        By default, if no matching entry is found in lookup_df, the new column's value remains as NaN.
+        
+        Parameters:
+            main_df (pd.DataFrame): The primary DataFrame to which the new column will be added.
+            lookup_df (pd.DataFrame): The secondary DataFrame that contains the target column.
+            target_col (str): The column name in lookup_df that contains the data to add.
+            new_col_name (str): The desired column name for the merged data in the resulting DataFrame.
+            merge_on (str, optional): The column name used for merging both DataFrames. Defaults to 'person_id'.
+            missing_value (any, optional): If provided (i.e. not None), missing values in the new column will be replaced
+                                        with this value. Defaults to None (i.e. missing values remain as NaN).
+        
+        Returns:
+            pd.DataFrame: A new DataFrame based on main_df with the added column.
+        """
+        # Make a copy of main_df to avoid modifying the original DataFrame
+        main_df_copy = main_df.copy()
+        
+        # Extract the relevant columns from lookup_df and rename target_col to new_col_name
+        lookup_subset = lookup_df[[merge_on, target_col]].rename(columns={target_col: new_col_name})
+        
+        # Merge the DataFrames on the specified key using a left join
+        result_df = main_df_copy.merge(lookup_subset, on=merge_on, how='left')
+        
+        # Optionally, fill missing values if a replacement value is provided
+        if missing_value is not None:
+            result_df[new_col_name] = result_df[new_col_name].fillna(missing_value)
+        
+        return result_df
