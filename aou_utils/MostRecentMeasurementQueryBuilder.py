@@ -149,24 +149,26 @@ class MostRecentMeasurementQueryBuilder:
         return query
 
     @staticmethod
-    def applyMeasurement(patient_df: pd.DataFrame, measurement_df: pd.DataFrame) -> pd.DataFrame:
+    def applyMeasurement(patient_df: pd.DataFrame, measurement_df: pd.DataFrame, label: str) -> pd.DataFrame:
         """
         Applies measurement data to the patient DataFrame by merging with the measurement DataFrame.
         Assumes measurement_df has 'person_id' and 'value_as_number' columns.
-        The 'value_as_number' column is renamed to 'bmi' after merging.
+        After merging, the 'value_as_number' column is renamed to the provided label.
         
         Parameters:
         - patient_df (pd.DataFrame): DataFrame containing patient data with a 'person_id' column.
         - measurement_df (pd.DataFrame): DataFrame containing measurement data with 'person_id' and 'value_as_number'.
+        - label (str): The new column name for the measurement values.
         
         Returns:
-        - pd.DataFrame: The merged DataFrame with an added 'bmi' column.
+        - pd.DataFrame: The merged DataFrame with an added measurement column named after the provided label.
         """
         merged_df = patient_df.merge(
             measurement_df[['person_id', 'value_as_number']],
             on='person_id',
             how='left'
         )
-        merged_df.rename(columns={'value_as_number': 'bmi'}, inplace=True)
+        merged_df.rename(columns={'value_as_number': label}, inplace=True)
         return merged_df
+
 
