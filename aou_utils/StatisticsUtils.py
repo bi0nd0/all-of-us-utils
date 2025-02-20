@@ -155,3 +155,37 @@ class StatisticsUtils:
         clean_data = numeric_data.dropna()
         # Return the standard deviation
         return clean_data.std()
+    
+    @staticmethod
+    def count_flagged_items(df: pd.DataFrame, keys: list) -> dict:
+        """
+        Counts the number of rows in the DataFrame that have at least one of the specified flag columns set to 1,
+        and calculates the percentage of such rows relative to the total number of rows.
+        
+        Parameters:
+        - df (pd.DataFrame): The input DataFrame.
+        - keys (list): A list of column names corresponding to the flag columns.
+        
+        Returns:
+        - dict: A dictionary with two keys:
+            'count': The total number of rows with at least one flag set to 1.
+            'percentage': The percentage of such rows with respect to the total number of rows in the DataFrame.
+            
+        Raises:
+        - KeyError: If any of the keys are not found in the DataFrame's columns.
+        """
+        # Check if all keys are present in the DataFrame columns
+        missing_keys = [key for key in keys if key not in df.columns]
+        if missing_keys:
+            raise KeyError(f"The following keys are not in the DataFrame columns: {missing_keys}")
+
+        # Create a boolean mask where at least one flag column equals 1
+        mask = df[keys].any(axis=1)
+        
+        # Count the number of rows where the condition is True
+        count = mask.sum()
+        
+        # Calculate the percentage relative to the total number of rows
+        percentage = (count / len(df)) * 100 if len(df) > 0 else 0
+        
+        return {"count": count, "percentage": percentage}
