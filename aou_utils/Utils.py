@@ -284,6 +284,33 @@ class Utils:
 
         return result
     
+    def get_total_with_label(df, key, label):
+        """
+        Function to compute the total for a specified column in a DataFrame and return a new DataFrame with the label.
+
+        Parameters:
+        df (pd.DataFrame): The input DataFrame.
+        key (str): The column name for which to compute the total.
+        label (str): The label to be associated with the column.
+
+        Returns:
+        pd.DataFrame: A DataFrame with columns 'Label' and 'Total'.
+        """
+        # Convert the specified column to integer type
+        df[key] = df[key].astype(int)
+        
+        # Compute the total for the column
+        total = df[key].sum()
+        
+        # Create a DataFrame with the label and total
+        result = pd.DataFrame({
+            'Label': [label],
+            'Total': [total]
+        })
+        
+        return result
+
+    
     @staticmethod
     def add_column_from_df(main_df, lookup_df, target_col, new_col_name, merge_on='person_id', missing_value=None):
         """

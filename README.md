@@ -13,7 +13,7 @@ To install the `aou_utils` library, follow these steps:
    First, clone the repository from GitHub to your local machine:
 
    ```sh
-   git clone https://github.com/username/all-of-us-utils.git
+   git clone https://github.com/bi0nd0/all-of-us-utils.git
    ```
 
    Replace `https://github.com/username/all-of-us-utils.git` with the actual URL of your GitHub repository.
